@@ -3,6 +3,7 @@ import json
 import requests
 from datetime import datetime, timedelta
 from redbot.core import commands
+from redbot.core.utils.chat_formatting import text_to_file
 
 # links
 SCHEDULE = "https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&leagueId={}"
@@ -41,10 +42,7 @@ class MatchScheduleParser(commands.Cog):
             except TypeError:
                 await ctx.send("An error has occured. {} might not exist.".format(tournament))
                 return
-        with open("matchschedule.txt", "w") as file:
-            file.write(schedule)
-        with open("matchschedule.txt", "rb") as file:
-            await ctx.author.send(file=discord.File(file))
+        await ctx.author.send(file=discord.File(schedule, filename="matchschedule.txt"))
         await ctx.send("Check your DMs!")
 
 
