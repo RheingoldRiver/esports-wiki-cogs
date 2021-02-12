@@ -34,10 +34,13 @@ class MatchScheduleParser(commands.Cog):
     @commands.command()
     async def parseschedule(self, ctx, tournament, stream=""):
         try:
-            schedule = get_schedule(tournament.upper(), stream)
+            schedule = get_schedule(tournament, stream)
         except TypeError:
-            await ctx.send("An error has occured. {} might not exist.".format(tournament.upper()))
-            return
+            try:
+                schedule = get_schedule(tournament.upper(), stream)
+            except TypeError:
+                await ctx.send("An error has occured. {} might not exist.".format(tournament))
+                return
         with open("matchschedule.txt", "w") as file:
             file.write(schedule)
         with open("matchschedule.txt", "rb") as file:
