@@ -42,7 +42,7 @@ class MatchScheduleParser(commands.Cog):
             except TypeError:
                 await ctx.send("An error has occured. {} might not exist.".format(tournament))
                 return
-        await ctx.author.send(file=discord.File(schedule, filename="matchschedule.txt"))
+        await ctx.author.send(file=text_to_file(schedule, filename="matchschedule.txt"))
         await ctx.send("Check your DMs!")
 
 
