@@ -45,6 +45,11 @@ class MatchScheduleParser(commands.Cog):
         await ctx.author.send(file=text_to_file(schedule, filename="matchschedule.txt"))
         await ctx.send("Check your DMs!")
 
+    @commands.command()
+    async def listleagues(self, ctx):
+        leagues = get_leagues()
+        await ctx.send(leagues)
+
 
 def get_headers():
     api_key = "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z"  # Todo: Get API Key from website but probably not
@@ -74,6 +79,19 @@ def get_league(league_name, headers):
     league_dict = next((league_dict for league_dict in json_leagues if league_dict["name"] == league_name), None)
     league_id = league_dict["id"]
     return league_id
+
+
+def get_leagues():
+    headers = get_headers()
+    leagues = "Leagues available on lolesports.com are:\n```"
+    json_leagues = get_json(LEAGUES, headers)
+    json_leagues = filter_json(json_leagues, "data", "leagues")
+    for league in json_leagues:
+        print(type(league))
+        print(league)
+        leagues = leagues + league["name"] + "\n"
+    leagues = leagues + "```"
+    return leagues
 
 
 def filter_json(json_file, *args):
