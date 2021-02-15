@@ -32,8 +32,8 @@ END = "{{MatchSchedule/End}}\n"
 
 class MatchScheduleParser(commands.Cog):
 
-    @commands.command()
-    async def parseschedule(self, ctx, tournament, stream=""):
+    @lolesportsparser.command()
+    async def parse(self, ctx, tournament, stream=""):
         try:
             schedule = get_schedule(tournament, stream)
         except TypeError:
@@ -45,8 +45,8 @@ class MatchScheduleParser(commands.Cog):
         await ctx.author.send(file=text_to_file(schedule, filename="matchschedule.txt"))
         await ctx.send("Check your DMs!")
 
-    @commands.command()
-    async def listleagues(self, ctx):
+    @lolesportsparser.command()
+    async def list(self, ctx):
         leagues = get_leagues()
         await ctx.send(leagues)
 
