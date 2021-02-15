@@ -32,6 +32,10 @@ END = "{{MatchSchedule/End}}\n"
 
 class MatchScheduleParser(commands.Cog):
 
+    @commands.group()
+    async def lolesportsparser(self, ctx):
+        """Commands to parse lolesports match schedules"""
+
     @lolesportsparser.command()
     async def parse(self, ctx, tournament, stream=""):
         try:
