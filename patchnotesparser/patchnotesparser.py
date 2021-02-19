@@ -16,18 +16,18 @@ class PatchNotesParser(commands.Cog):
 
 	@patchnotesparser.command()
 	async def parse(self, ctx, patch_version):
-		self.patch_version = validate_patch(patch_version)
-		if not self.patch_version:
-			await ctx.send("Incorrect patch number format, please use one of the following as the version major/minor separator: ```[ . , - ; ]```")
-		#response = client.get(self.base_url)
+		"""Parse the specified patch notes into Wiki markdown"""
 
-		# something went wrong
-		#if response.status_code != 200:
-		#	raise ValueError(f"Expected HTTP 200 code, but got back {response.status_code}.")
+		if not self.validate_patch(patch_version):
+			await ctx.send("Incorrect patch number format, "
+			"please use one of the following as the version major/minor separator: "
+			"`. , - ;`")
+			return
+		await ctx.send("Command executed successfully.")
 
-		#soup = BeautifulSoup(response.text, 'html.parser')
-
-	def validate_patch(patch_version):
-		match = regex.search('^\s*[1-9]{1,2}(\.|,|-|;)[1-9]{1,2}\s*$', patch_version)
+	def validate_patch(self, patch_version):
+		match = regex.search(r"^\s*[1-9]{1,2}(\.|,|-|;)[1-9]{1,2}\s*$", patch_version)
 		if match:
-			return patch_version.strip().Replace(",", ".").Replace("-", ".").Replace(";", ".")
+			self.patch_notes = patch_version.strip().replace(",", ".")\
+				.replace("-", ".").replace(";", ".")
+			return True
