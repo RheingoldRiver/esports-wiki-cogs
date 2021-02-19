@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31004.235
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "patchnotesparser", "patchnotesparser.pyproj", "{61B78C0B-3291-4A1B-B59E-7129A2CADA1C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{61B78C0B-3291-4A1B-B59E-7129A2CADA1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61B78C0B-3291-4A1B-B59E-7129A2CADA1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {97CF32B6-451E-48C1-A734-B14B34728DAF}
+	EndGlobalSection
+EndGlobal

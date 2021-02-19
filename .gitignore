@@ -1,3 +1,6 @@
 .idea/*
 venv/*
 *.pyc
+
+# Visual Studio config files
+**/.vs/
