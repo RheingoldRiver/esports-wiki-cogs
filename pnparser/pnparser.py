@@ -1,5 +1,6 @@
 from dateutil.parser import parse as datetimeparser
 from .data_dragon import DataDragon
+from .designer import Designer
 from redbot.core import commands
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -18,14 +19,14 @@ class PatchNotesParser(commands.Cog):
         self.patch_version = ""
         self.published_date = ""
 
-    @commands.command()
-    async def version(self, ctx):
-        """Show package information"""
-        await ctx.send(f"Current version is {CURRENT_VERSION}")
-
     @commands.group()
     async def pnparser(self, ctx):
         """A League of Legends patch notes parser"""
+
+    @pnparser.command()
+    async def version(self, ctx):
+        """Show package information"""
+        await ctx.send(f"Current version is {CURRENT_VERSION}")
 
     @pnparser.command()
     async def report(self, ctx, message):
@@ -33,18 +34,48 @@ class PatchNotesParser(commands.Cog):
         return await ctx.send("Thanks, for reporting your issue.")
         # TODO: Send myself a message
 
+    @pnparser.command()
+    async def reparse(self, ctx):
+        """Reparse the last parsed patch notes"""
+        if not self.patch_version:
+            return await ctx.send("Could not reparse. "
+                                  "Please specify the patch version by calling "
+                                  "`^pnparser parse all <patch_version>`.")
+        await ctx.send(f"Reparsing patch notes version `{self.patch_version}`.")
+        return await self.all(ctx, self.patch_version)
+
+    @pnparser.group()
+    async def designer(self, ctx):
+        """Commands to get information related to patch notes designers"""
+
+    @designer.command()
+    async def geticon(self, ctx, designer_name):
+        """Get the icon used for the specified designer"""
+        return await ctx.send(f"`{Designer.get_designer_icon(designer_name)}`")
+
+    @designer.command()
+    async def seticon(self, ctx, designer_name, designer_icon):
+        """Set a new icon for the specified designer"""
+        # TODO: Set new icon
+
+    @designer.command()
+    async def add(self, ctx, designer_name, designer_icon):
+        """Add a new designer and icon"""
+        Designer.add_designer(designer_name, designer_icon)
+        return await ctx.send(f"Designer {designer_name} added successfully.")
+
     @pnparser.group()
     async def ddragon(self, ctx):
-        """Commands to get Data Dragon related information"""
+        """Commands to get information related to ddragon"""
 
     @ddragon.command()
     async def version(self, ctx):
-        """Get the current version of the ddragon"""
+        """Get the current version number"""
         return await ctx.send(f"Current version of ddragon is `{DataDragon.current}`.")
 
     @ddragon.command()
     async def update(self, ctx):
-        """Get the latest version of the Data Dragon from Riot"""
+        """Get the latest version from Riot"""
         current_version = DataDragon.current
         await DataDragon.load_data(ctx)
 
@@ -58,7 +89,7 @@ class PatchNotesParser(commands.Cog):
 
     @parse.command()
     async def all(self, ctx, patch_version):
-        """Parse the entire patch notes"""
+        """Parse the entire specified patch notes"""
 
         # validate patch notes version number format
         if not self.__validate_patch(patch_version):
@@ -96,6 +127,9 @@ class PatchNotesParser(commands.Cog):
                 self.context += f"{content}\n\n"
         self.context = self.context.rstrip()
 
+        # patch notes designers
+        designers = soup.find_all("span", {"class": "context-designer"})
+
         if len(container) == 0:
             return await ctx.send("`ERROR: Couldn't locate the main container.`")
 
@@ -110,10 +144,10 @@ class PatchNotesParser(commands.Cog):
 
     @parse.command()
     async def midpatch(self, ctx, patch_version):
-        """Patch mid-patch section from the specified patch notes"""
+        """Parse the mid-patch section from the specified patch notes"""
         # TODO: Parse mid-patch
 
     def __validate_patch(self, patch_version):
-        if regex.search(r"^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$", patch_version):
+        if regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
             self.patch_version = patch_version.strip().replace(',', '.').replace('-', '.')
             return True

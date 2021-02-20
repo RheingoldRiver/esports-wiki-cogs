@@ -2,5 +2,11 @@
 	"author": [
 		"Bruno Blanes"
 	],
-	"name": "PatchNotesParser"
+	"name": "PatchNotesParser",
+	"description": "A set of commands useful when parsing League of Legends patch notes.",
+	"short": "A short description",
+	"install_msg": "HEY THERE! {stores desiger.icon.json}",
+	"requirements": [
+		"bs4"
+	]
 }
