@@ -2,23 +2,35 @@ import requests as client
 import json
 
 # links
-DATA_DRAGON_RUNES = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforged.json"
-DATA_DRAGON_ITEMS = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/item.json"
-DATA_DRAGON_CHAMPIONS = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion.json"
+VERSIONS = "https://ddragon.leagueoflegends.com/api/versions.json"
+ITEMS = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/item.json"
+CHAMPIONS = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion.json"
+RUNES = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforged.json"
 
 
 class DataDragon:
-    def __init__(self, patch_version):
-        self.patch_version = patch_version
+    current = "None"
+    items = None
+    runes = None
+    champions = None
 
-    def load_data(self):
-        response = client.get(
-            DATA_DRAGON_CHAMPIONS.format(f"{self.patch_version}.1"))
-        self.champions = json.loads(response.text)["data"]
-        response = client.get(
-            DATA_DRAGON_ITEMS.format(f"{self.patch_version}.1"))
-        self.items = json.loads(response.text)["data"]
-        response = client.get(
-            DATA_DRAGON_RUNES.format(f"{self.patch_version}.1"))
-        self.runes = json.loads(response.text)
-        return self
+    @staticmethod
+    async def load_data(ctx):
+        # check if update is needed
+        latest_version = DataDragon.__get_latest_version()
+        if latest_version == DataDragon.current:
+            return
+
+        response = client.get(CHAMPIONS.format(f"{latest_version}"))
+        DataDragon.champions = json.loads(response.text)["data"]
+        response = client.get(ITEMS.format(f"{latest_version}"))
+        DataDragon.items = json.loads(response.text)["data"]
+        response = client.get(RUNES.format(f"{latest_version}"))
+        DataDragon.runes = json.loads(response.text)
+        DataDragon.current = latest_version
+        await ctx.send(f"Updated ddragon to version `{DataDragon.current}`.")
+
+    @staticmethod
+    def __get_latest_version():
+        response = client.get(VERSIONS)
+        return json.loads(response.text)[0]
