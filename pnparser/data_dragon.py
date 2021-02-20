@@ -9,13 +9,13 @@ RUNES = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforged.jso
 
 
 class DataDragon:
-    current = "None"
+    current: str = ""
     items = None
     runes = None
     champions = None
 
     @staticmethod
-    async def load_data(ctx):
+    async def load_data(ctx) -> None:
         # check if update is needed
         latest_version = DataDragon.__get_latest_version()
         if latest_version == DataDragon.current:
@@ -31,6 +31,6 @@ class DataDragon:
         await ctx.send(f"Updated ddragon to version `{DataDragon.current}`.")
 
     @staticmethod
-    def __get_latest_version():
+    def __get_latest_version() -> str:
         response = client.get(VERSIONS)
         return json.loads(response.text)[0]
