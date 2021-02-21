@@ -1,5 +1,5 @@
 from .pnparser import PatchNotesParser
 
 
-def setup(bot):
+def setup(bot: object) -> None:
     bot.add_cog(PatchNotesParser())
