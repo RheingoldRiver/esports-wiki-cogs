@@ -121,10 +121,10 @@ class PatchNotesParser(commands.Cog):
 
         # patch notes context
         context: str = soup.find("blockquote", {"class": "context"}).text
-        for text in context.strip().split("\n")[:-1]:
-            content: str = text.strip()
-            if content and not content.isspace():
-                self.context += f"{content}\n\n"
+        for line in context.strip().split("\n")[:-1]:
+            line_text: str = line.strip()
+            if line_text and not line_text.isspace():
+                self.context += f"{line_text}\n\n"
         self.context = self.context.rstrip()
 
         # patch notes designers
