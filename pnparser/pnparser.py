@@ -3,12 +3,11 @@ from .data_dragon import DataDragon
 from .designer import Designer
 from redbot.core import commands
 from bs4 import BeautifulSoup
-from datetime import datetime
 import requests as client
 import re as regex
 
-BASE_ADDRESS = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
-CURRENT_VERSION = "0.1.0"
+BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
+CURRENT_VERSION: str = "0.1.0"
 
 
 class PatchNotesParser(commands.Cog):
@@ -27,7 +26,7 @@ class PatchNotesParser(commands.Cog):
     @pnparser.command()
     async def version(self, ctx: object) -> None:
         """Show package information"""
-        await ctx.send(f"Current version is {CURRENT_VERSION}")
+        await ctx.send(f"Current version is {CURRENT_VERSION}.")
 
     @pnparser.command()
     async def report(self, ctx: object, message: str) -> None:
@@ -129,8 +128,13 @@ class PatchNotesParser(commands.Cog):
 
         # patch notes designers
         for designer_span in soup.find_all("span", {"class": "context-designer"}):
-            designer: Designer = Designer(designer_span.text.strip())
-            await ctx.send(designer.name)
+            designer = Designer(designer_span.text.strip().title())
+            if designer.icon is None:
+                # TODO: Somehow try to automate this process
+                await ctx.send(f"Could not parse `{designer.name}`'s designer icon.\n"
+                               "Use `^pnparser designer seticon <designer_name> <designer_icon>` "
+                               "to add a new designer and icon to my database.")
+                return
             self.designers.append(designer)
 
         # gets the root div where all the patch notes are
