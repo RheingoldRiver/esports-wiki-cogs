@@ -1,10 +1,10 @@
-from dateutil.parser import parse as datetimeparser
-from .data_dragon import DataDragon
-from .designer import Designer
+from dateutil import parser as DatetimeParser
 from redbot.core import commands
+from .ddragon import DataDragon
+from .designer import Designer
 from bs4 import BeautifulSoup
-import requests as client
-import re as regex
+import requests as HttpClient
+import re as Regex
 
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
@@ -12,7 +12,7 @@ CURRENT_VERSION: str = "0.1.0"
 
 class PatchNotesParser(commands.Cog):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.context: str = ""
         self.patch_url: str = ""
         self.patch_version: str = ""
@@ -72,16 +72,16 @@ class PatchNotesParser(commands.Cog):
     @ddragon.command()
     async def version(self, ctx: object) -> None:
         """Get the current version number"""
-        await ctx.send(f"Current version of ddragon is `{DataDragon.current}`.")
+        await ctx.send(f"Current version of ddragon is `{DataDragon.current_version}`.")
 
     @ddragon.command()
     async def update(self, ctx: object) -> None:
         """Get the latest version from Riot"""
-        current_version = DataDragon.current
+        current_version: str = DataDragon.current_version
         await DataDragon.load_data(ctx)
 
         # check if there was an update
-        if current_version == DataDragon.current:
+        if current_version == DataDragon.current_version:
             await ctx.send(f"Already up to date, latest version is `{current_version}`.")
 
     @pnparser.group()
@@ -94,19 +94,17 @@ class PatchNotesParser(commands.Cog):
 
         # validate patch notes version number format
         if not self.__validate_patch(patch_version):
-            await ctx.send("Incorrect patch version number format, "
-                           "use one of the following as the version separator: "
-                           "`. , -`")
+            await ctx.send("Incorrect patch notes version number format.")
             return
 
         self.patch_url = BASE_ADDRESS.format(
             self.patch_version.replace('.', '-'))
-        response = client.get(self.patch_url)
+        response = HttpClient.get(self.patch_url)
 
         # something went wrong
         if not response.status_code == 200:
-            await ctx.send("`ERROR: Expected response of type HTTP 200, "
-                           f"but got back HTTP {response.status_code}.`")
+            await ctx.send("Expected response of type HTTP 200, "
+                           f"but got back HTTP {response.status_code}.")
             return
 
         # assert ddragon is loaded
@@ -116,7 +114,8 @@ class PatchNotesParser(commands.Cog):
         soup = BeautifulSoup(response.text, "html.parser")
 
         # set the date the patch notes were published
-        self.published_date = datetimeparser(soup.time["datetime"]).date()
+        self.published_date = DatetimeParser.parse(
+            soup.time["datetime"]).date()
 
         # patch notes context
         context: str = soup.find("blockquote", {"class": "context"}).text
@@ -129,9 +128,14 @@ class PatchNotesParser(commands.Cog):
         # patch notes designers
         for designer_span in soup.find_all("span", {"class": "context-designer"}):
             designer = Designer(designer_span.text.strip().title())
+            if designer.username is None:
+                await ctx.send(f"Could not extract username from `context-designer`. "
+                               "Please report this issue using "
+                               "`^ pnparser report <message>`.")
+                return
             if designer.icon is None:
                 # TODO: Somehow try to automate this process
-                await ctx.send(f"Could not parse `{designer.name}`'s designer icon.\n"
+                await ctx.send(f"Could not parse {designer.username}'s designer icon.\n"
                                "Use `^pnparser designer seticon <designer_name> <designer_icon>` "
                                "to add a new designer and icon to my database.")
                 return
@@ -141,7 +145,7 @@ class PatchNotesParser(commands.Cog):
         container: list = soup.find("div", {"class": "style__Content-tkcm0t-1"}
                                     ).find_all(lambda tag: tag.name == "div")
         if len(container) == 0:
-            await ctx.send("`ERROR: Couldn't locate the main container.`")
+            await ctx.send("Could not locate the main container.")
             return
 
         section: object = None
@@ -159,6 +163,6 @@ class PatchNotesParser(commands.Cog):
         # TODO: Parse mid-patch
 
     def __validate_patch(self, patch_version: str) -> bool:
-        if regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
+        if Regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
             self.patch_version = patch_version.strip().replace(',', '.').replace('-', '.')
             return True
