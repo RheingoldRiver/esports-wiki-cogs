@@ -1,5 +1,5 @@
 import requests as HttpClient
-import Json
+import json as Json
 
 # links
 VERSIONS: str = "https://ddragon.leagueoflegends.com/api/versions.json"

@@ -1,6 +1,6 @@
 import os.path as Path
+import json as Json
 import re as Regex
-import Json
 
 ICONS_DB: str = Path.join(Path.dirname(__file__), "designer_icons.json")
 TEMPLATE: str = "[[File:{0}|20px|link=]] {1}<br>"
