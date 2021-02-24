@@ -1,14 +1,14 @@
-import re as regex
-import json
-import os
+import os.path as Path
+import re as Regex
+import Json
 
-ICONS_FILE: str = os.path.join(
-    os.path.dirname(__file__), "designer_icons.json")
+ICONS_DB: str = Path.join(Path.dirname(__file__), "designer_icons.json")
 TEMPLATE: str = "[[File:{0}|20px|link=]] {1}<br>"
 
 
 class Designer:
     def __init__(self, name: str) -> None:
+        self.username: str = None
         self.__name: str = ""
         self.icon: str = None
         self.name = name
@@ -16,8 +16,8 @@ class Designer:
     @staticmethod
     def get_designer_icon(username: str) -> str:
         # returns the designer's icon name
-        with open(ICONS_FILE, 'r') as file:
-            icons: dict = json.loads(file.read())
+        with open(ICONS_DB, 'r') as file:
+            icons: dict = Json.loads(file.read())
             return icons[username]
 
     @staticmethod
@@ -33,9 +33,10 @@ class Designer:
     def name(self, value: str) -> None:
         # standardize text and get the user icon
         self.__name = value.replace('“', '"').replace('”', '"')
-        result = regex.search(r'(?:").*(?:")', self.__name)
+        result = Regex.search(r'(?:").*(?:")', self.__name)
         if result is not None:
-            self.icon = Designer.get_designer_icon(result.group(0)[1:-1])
+            self.username = result.group(0)[1:-1]
+            self.icon = Designer.get_designer_icon(self.username)
 
     def print(self) -> str:
         # print the designer template
