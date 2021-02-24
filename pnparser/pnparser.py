@@ -1,10 +1,13 @@
 from dateutil import parser as DatetimeParser
+from datetime import datetime as DateTime
+from redbot.core.commands import Context
 from redbot.core import commands
-from .ddragon import DataDragon
-from .designer import Designer
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
 import re as Regex
+
+from .ddragon import DataDragon
+from .designer import Designer
 
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
@@ -16,26 +19,32 @@ class PatchNotesParser(commands.Cog):
         self.context: str = ""
         self.patch_url: str = ""
         self.patch_version: str = ""
-        self.published_date: object = ""
-        self.designers: list = []
+        self.published_date = DateTime.now()
+        self.designers: 'list[Designer]' = []
+
+    def __validate_patch(self, patch_version: str) -> bool:
+        if Regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
+            self.patch_version = patch_version.strip().replace(',', '.').replace('-', '.')
+            return True
+        return False
 
     @commands.group()
-    async def pnparser(self, ctx: object) -> None:
+    async def pnparser(self, ctx: Context) -> None:
         """A League of Legends patch notes parser"""
 
     @pnparser.command()
-    async def version(self, ctx: object) -> None:
+    async def version(self, ctx: Context) -> None:
         """Show package information"""
         await ctx.send(f"Current version is {CURRENT_VERSION}.")
 
     @pnparser.command()
-    async def report(self, ctx: object, message: str) -> None:
+    async def report(self, ctx: Context, message: str) -> None:
         """Report parser issues"""
         await ctx.send("Thanks, for reporting your issue.")
         # TODO: Send myself a message
 
     @pnparser.command()
-    async def reparse(self, ctx: object) -> None:
+    async def reparse(self, ctx: Context) -> None:
         """Reparse the last parsed patch notes"""
         if not self.patch_version:
             await ctx.send("Could not reparse. "
@@ -46,36 +55,36 @@ class PatchNotesParser(commands.Cog):
         await self.all(ctx, self.patch_version)
 
     @pnparser.group()
-    async def designer(self, ctx: object) -> None:
+    async def designer(self, ctx: Context) -> None:
         """Commands to get information related to patch notes designers"""
 
     @designer.command()
-    async def geticon(self, ctx: object, designer_name: str) -> None:
+    async def geticon(self, ctx: Context, designer_name: str) -> None:
         """Get the icon used for the specified designer"""
         await ctx.send(f"`{Designer.get_designer_icon(designer_name)}`")
 
     @designer.command()
-    async def seticon(self, ctx: object, designer_name: str, designer_icon: str) -> None:
+    async def seticon(self, ctx: Context, designer_name: str, designer_icon: str) -> None:
         """Set a new icon for the specified designer"""
         # TODO: Set new icon
 
     @designer.command()
-    async def add(self, ctx: object, designer_name: str, designer_icon: str) -> None:
+    async def add(self, ctx: Context, designer_name: str, designer_icon: str) -> None:
         """Add a new designer and icon"""
         Designer.add_designer(designer_name, designer_icon)
         await ctx.send(f"Designer {designer_name} added successfully.")
 
     @pnparser.group()
-    async def ddragon(self, ctx: object) -> None:
+    async def ddragon(self, ctx: Context) -> None:
         """Commands to get information related to ddragon"""
 
-    @ddragon.command()
-    async def version(self, ctx: object) -> None:
+    @ddragon.command("version")
+    async def ddragon_version(self, ctx: Context) -> None:
         """Get the current version number"""
         await ctx.send(f"Current version of ddragon is `{DataDragon.current_version}`.")
 
     @ddragon.command()
-    async def update(self, ctx: object) -> None:
+    async def update(self, ctx: Context) -> None:
         """Get the latest version from Riot"""
         current_version: str = DataDragon.current_version
         await DataDragon.load_data(ctx)
@@ -85,11 +94,11 @@ class PatchNotesParser(commands.Cog):
             await ctx.send(f"Already up to date, latest version is `{current_version}`.")
 
     @pnparser.group()
-    async def parse(self, ctx: object) -> None:
+    async def parse(self, ctx: Context) -> None:
         """Commands to parse League of Legends patch notes"""
 
     @parse.command()
-    async def all(self, ctx: object, patch_version: str) -> None:
+    async def all(self, ctx: Context, patch_version: str) -> None:
         """Parse the entire specified patch notes"""
 
         # validate patch notes version number format
@@ -118,15 +127,17 @@ class PatchNotesParser(commands.Cog):
             soup.time["datetime"]).date()
 
         # patch notes context
-        context: str = soup.find("blockquote", {"class": "context"}).text
-        for line in context.strip().split("\n")[:-1]:
+        context: Tag = soup.find("blockquote", {"class": "context"})
+        for line in context.text.strip().split("\n")[:-1]:
             line_text: str = line.strip()
             if line_text and not line_text.isspace():
                 self.context += f"{line_text}\n\n"
         self.context = self.context.rstrip()
 
         # patch notes designers
-        for designer_span in soup.find_all("span", {"class": "context-designer"}):
+        designer_elements: 'list[Tag]' = soup.find_all(
+            "span", {"class": "context-designer"})
+        for designer_span in designer_elements:
             designer = Designer(designer_span.text.strip().title())
             if designer.username is None:
                 await ctx.send(f"Could not extract username from `context-designer`. "
@@ -142,12 +153,12 @@ class PatchNotesParser(commands.Cog):
             self.designers.append(designer)
 
         # gets the root div where all the patch notes are
-        container: list = soup.find("div", {"class": "style__Content-tkcm0t-1"}
-                                    ).find_all(lambda tag: tag.name == "div")
-        if len(container) == 0:
-            await ctx.send("Could not locate the main container.")
+        root: Tag = soup.find("div", {"class": "style__Content-tkcm0t-1"})
+        if root is None:
+            await ctx.send("Could not locate the main patch notes `<div>`.")
             return
 
+        container: 'list[Tag]' = root.find_all("div")
         section: object = None
         border: object = None
         section_id: int = 1
@@ -158,11 +169,6 @@ class PatchNotesParser(commands.Cog):
                        "`^pnparser report <message>`.")
 
     @parse.command()
-    async def midpatch(self, ctx: object, patch_version: str) -> None:
+    async def midpatch(self, ctx: Context, patch_version: str) -> None:
         """Parse the mid-patch section from the specified patch notes"""
         # TODO: Parse mid-patch
-
-    def __validate_patch(self, patch_version: str) -> bool:
-        if Regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
-            self.patch_version = patch_version.strip().replace(',', '.').replace('-', '.')
-            return True

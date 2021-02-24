@@ -8,9 +8,9 @@ TEMPLATE: str = "[[File:{0}|20px|link=]] {1}<br>"
 
 class Designer:
     def __init__(self, name: str) -> None:
-        self.username: str = None
+        self.username: 'str | None' = None
+        self.icon: 'str | None' = None
         self.__name: str = ""
-        self.icon: str = None
         self.name = name
 
     @staticmethod
@@ -23,7 +23,7 @@ class Designer:
     @staticmethod
     def add_designer(username: str, icon: str) -> None:
         # TODO: Add a new designer
-        return
+        pass
 
     @property
     def name(self) -> str:

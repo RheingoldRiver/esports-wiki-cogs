@@ -1,3 +1,4 @@
+from redbot.core.commands import Context
 import requests as HttpClient
 import json as Json
 
@@ -9,13 +10,13 @@ RUNES: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforge
 
 
 class DataDragon:
-    items: dict = None
-    runes: dict = None
-    champions: dict = None
-    current_version: str = None
+    items: dict = {}
+    runes: dict = {}
+    champions: dict = {}
+    current_version: str = ""
 
     @staticmethod
-    async def load_data(ctx: object) -> None:
+    async def load_data(ctx: Context) -> None:
         # check if update is needed
         latest_version: str = DataDragon.__get_latest_version()
         if latest_version == DataDragon.current_version:
