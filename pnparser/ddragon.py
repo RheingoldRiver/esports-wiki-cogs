@@ -13,7 +13,7 @@ class DataDragon:
     items: dict = {}
     runes: dict = {}
     champions: dict = {}
-    current_version: str = ""
+    current_version: 'str | None' = None
 
     @staticmethod
     async def load_data(ctx: Context) -> None:
