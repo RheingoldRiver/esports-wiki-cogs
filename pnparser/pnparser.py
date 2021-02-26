@@ -14,6 +14,7 @@ import re as Regex
 
 from .ddragon import DataDragon
 from .designer import Designer
+from .section import Section
 
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
@@ -24,6 +25,7 @@ class PatchNotesParser(commands.Cog):
     def __init__(self, bot: Red) -> None:
         self.context: str = ""
         self.patch_version: str = ""
+        self.sections: 'list[Section]' = []
         self.patch_url: 'str | None' = None
         self.published_date = DateTime.now()
         self.designers: 'list[Designer]' = []
@@ -154,6 +156,7 @@ class PatchNotesParser(commands.Cog):
 
         # something went wrong
         if not response.status_code == 200:
+            # TODO: Try trice and then report
             await ctx.send("Expected response of type `HTTP 200`, "
                            f"but got back `HTTP {response.status_code}`.")
             return
@@ -166,8 +169,9 @@ class PatchNotesParser(commands.Cog):
 
         # set the date the patch notes were published
         time: 'Tag | None' = soup.find("time")
-        # if time is None:
-        await self.__auto_report(ctx, "Could not get article published date.")
+        if time is None:
+            await self.__auto_report(ctx, "Could not get article published date.")
+            return
         self.published_date = DatetimeParser.parse(time["datetime"]).date()
 
         # patch notes context
@@ -204,20 +208,31 @@ class PatchNotesParser(commands.Cog):
             return
 
         section_id: int = 1
-        # border: 'Border | None' = None
-        # section: 'Section | None' = None
-        container: 'list[Tag]' = root.find_all("div")
+        border: 'Border | None' = None
+        section: 'Section | None' = None
+        # https://github.com/microsoft/pylance-release/issues/993
+        container: 'list[Tag]' = root.find_all("div", recursive=False)
 
-        for div in container:
-            if div.has_attr("class"):
-                if div["class"] == "header-primary":
-                    pass
-                elif div["class"] == "content-border":
-                    # if section is None:
+        if len(container) == 1:
+            # everything is under "patch-notes-container"
+            # it isn't always like this though
+            container = list(filter(lambda tag:
+                                    isinstance(tag, Tag),
+                                    container[0].children))
+        for tag in container:
+            if not tag.has_attr("class"):
+                continue
+            if tag.name == "header" and "header-primary" in tag["class"]:
+                section = Section(section_id, tag.text.strip().title())
+                self.sections.append(section)
+                section_id += 1
+                border = None
+            elif tag.name == "div" and "content-border" in tag["class"]:
+                if section is None:
                     await self.__auto_report(ctx, 'HTML node with `class="content-border"` '
                                              'found before the `"header-primary"` was defined.')
-                    # return
-
+                    return
+                await ctx.send(section.title)
         await ctx.send("Patch notes parsed successfully.\n"
                        "See at: {placeholder}\n\n"
                        "To report issues with the parser use "
