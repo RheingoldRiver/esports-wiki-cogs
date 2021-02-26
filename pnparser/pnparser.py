@@ -23,8 +23,8 @@ class PatchNotesParser(commands.Cog):
 
     def __init__(self, bot: Red) -> None:
         self.context: str = ""
-        self.patch_url: str = ""
         self.patch_version: str = ""
+        self.patch_url: 'str | None' = None
         self.published_date = DateTime.now()
         self.designers: 'list[Designer]' = []
 
@@ -43,13 +43,21 @@ class PatchNotesParser(commands.Cog):
         return False
 
     async def __auto_report(self, ctx: GuildContext, message: str) -> None:
+        # TODO: remove embeded patch notes info
         await Tunnel.message_forwarder(destination=self.bug_fix_channel,
-                                       content="Patch notes parser auto report from command "
+                                       content="Patch notes parser **auto report** from command "
                                        f"`{ctx.message.system_content}` executed at "
                                        f"*{ctx.guild.name} - #{ctx.channel.name}:*\n"
                                        f"https://discord.com/channels/{ctx.guild.id}/"
                                        f"{ctx.channel.id}/{ctx.message.id}\n"
-                                       f"{message}")
+                                       f"```fix\n{message}\n```"
+                                       f"\n**Additional information**\n"
+                                       f"Patch notes: {self.patch_url}\n```python\n"
+                                       f"Cog version: {CURRENT_VERSION}\n"
+                                       f"Data Dragon version: {DataDragon.current_version}\n```")
+        await ctx.send("Something went wrong and I could not parse.\n"
+                       "An automatic error report was generated and "
+                       "someone will look into it.")
 
     @commands.group()
     async def pnparser(self, ctx: GuildContext) -> None:
@@ -61,15 +69,21 @@ class PatchNotesParser(commands.Cog):
         await ctx.send(f"Current version is {CURRENT_VERSION}.")
 
     @pnparser.command()
-    async def report(self, ctx: GuildContext, message: str) -> None:
+    async def report(self, ctx: GuildContext, *message: str) -> None:
         """Report parser issues"""
         await Tunnel.message_forwarder(destination=self.bug_fix_channel,
                                        content="Patch notes parser error reported by "
                                        f"**{ctx.author.display_name}** in "
                                        f"*{ctx.guild.name} - #{ctx.channel.name}:*\n"
                                        f"https://discord.com/channels/{ctx.guild.id}/"
-                                       f"{ctx.channel.id}/{ctx.message.id}\n"
-                                       f"{message}")
+                                       f"{ctx.channel.id}/{ctx.message.id}\n{' '.join(message)}\n"
+                                       f"\n**Additional information**\n"
+                                       f"Patch notes: {self.patch_url}\n```python\n"
+                                       f"Cog version: {CURRENT_VERSION}\n"
+                                       f"Data Dragon version: {DataDragon.current_version}\n```")
+        await ctx.send("Thank you for reporting this issue.\n"
+                       "Someone will look into it and might get in touch "
+                       "to let you know when it is fixed.")
 
     @pnparser.command()
     async def reparse(self, ctx: GuildContext) -> None:
@@ -114,7 +128,7 @@ class PatchNotesParser(commands.Cog):
     @ddragon.command()
     async def update(self, ctx: GuildContext) -> None:
         """Get the latest version from Riot"""
-        current_version: str = DataDragon.current_version
+        current_version: 'str | None' = DataDragon.current_version
         await DataDragon.load_data(ctx)
 
         # check if there was an update
@@ -152,9 +166,8 @@ class PatchNotesParser(commands.Cog):
 
         # set the date the patch notes were published
         time: 'Tag | None' = soup.find("time")
-        if time is None:
-            await self.__auto_report(ctx, "Could not get article "
-                                     "published date.")
+        # if time is None:
+        await self.__auto_report(ctx, "Could not get article published date.")
         self.published_date = DatetimeParser.parse(time["datetime"]).date()
 
         # patch notes context
@@ -210,7 +223,7 @@ class PatchNotesParser(commands.Cog):
                        "To report issues with the parser use "
                        "`^pnparser report <message>`.")
 
-    @ parse.command()
+    @parse.command()
     async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
         """Parse the mid-patch section from the specified patch notes"""
         # TODO: Parse mid-patch
