@@ -1,5 +1,6 @@
 from redbot.core.commands import Context
 import requests as HttpClient
+from typing import Any
 import json as Json
 
 # links
@@ -12,7 +13,7 @@ RUNES: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforge
 class DataDragon:
     items: dict = {}
     runes: dict = {}
-    champions: dict = {}
+    champions: 'list[dict[str, Any]]' = []
     current_version: 'str | None' = None
 
     @staticmethod
@@ -22,8 +23,14 @@ class DataDragon:
         if latest_version == DataDragon.current_version:
             return
 
+        # get champions from data dragon
         response = HttpClient.get(CHAMPIONS.format(f"{latest_version}"))
-        DataDragon.champions = Json.loads(response.text)["data"]
+        data = Json.loads(response.text)["data"]
+        DataDragon.champions = []
+        for champion in data:
+            DataDragon.champions.append(data[champion])
+
+        # TODO: fix the remaining lists
         response = HttpClient.get(ITEMS.format(f"{latest_version}"))
         DataDragon.items = Json.loads(response.text)["data"]
         response = HttpClient.get(RUNES.format(f"{latest_version}"))

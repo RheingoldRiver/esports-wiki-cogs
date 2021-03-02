@@ -1,6 +1,6 @@
 from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
-from typing import Iterator
+from typing import Any, Iterator
 
 from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel
@@ -18,6 +18,16 @@ from .models import *
 
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
+
+
+# filter html elements to those that can be cast to Tag and have classes
+def tags(tag: Any) -> bool:
+    return isinstance(tag, Tag) and tag.has_attr("class")
+
+
+# check if the given name has the ability key preffix
+def match_ability(ability_info: str) -> 'Regex.Match[str] | None':
+    return Regex.search(r'([QWER]|(PASSIVE))\s-\s', ability_info)
 
 
 class PatchNotesParser(commands.Cog):
@@ -213,10 +223,7 @@ class PatchNotesParser(commands.Cog):
         if len(container) == 1:
             # everything is under "patch-notes-container"
             # it isn't always like this though
-            container = list(filter(lambda tag:
-                                    isinstance(tag, Tag) and
-                                    tag.has_attr("class"),
-                                    container[0].children))
+            container = list(filter(tags, container[0].children))
         for tag in container:
             if tag.name == "header" and "header-primary" in tag["class"]:
                 section = Section(section_id, tag.text.strip().title())
@@ -228,10 +235,8 @@ class PatchNotesParser(commands.Cog):
                     return await self.__auto_report(ctx, 'HTML node with `class="content-border"` '
                                                     'found before the `"header-primary"` was defined.')
 
-                content_list: Iterator[Tag] = filter(lambda tag:
-                                                     isinstance(tag, Tag) and
-                                                     tag.has_attr("class"),
-                                                     tag.div.div.children)
+                content_list: Iterator[Tag] = filter(
+                    tags, tag.div.div.children)
 
                 # handles mid-patch updates
                 if section.title == "Mid-Patch Updates":
@@ -276,10 +281,19 @@ class PatchNotesParser(commands.Cog):
                                                     'found before the first "ability-title" was defined.')
 
                 # get all the properties of the current attribute
-                for attribute_info in content.children:
-                    if attribute_info["class"] == "attribute":
+                for attribute_info in filter(tags, content.children):
+                    if "attribute" in attribute_info["class"]:
                         attribute_name: str = attribute_info.text.strip()
-                        await ctx.send(attribute_name)
+
+                        # the current change reffers to a champion
+                        if any(x["name"] == change.name for x in DataDragon.champions):
+
+                            # attribute is from an ability
+                            result = match_ability(attribute_name)
+                            if result is not None:
+                                ability_info: str = attribute_name[result.span()[0] +
+                                                                   len(result.group(0)):]
+                                await ctx.send(ability_info)
 
     @parse.command()
     async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
