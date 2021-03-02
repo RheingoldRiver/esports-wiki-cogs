@@ -1,5 +1,6 @@
 from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
+from typing import Iterator
 
 from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel
@@ -13,8 +14,7 @@ import requests as HttpClient
 import re as Regex
 
 from .ddragon import DataDragon
-from .designer import Designer
-from .section import Section
+from .models import *
 
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
@@ -169,10 +169,10 @@ class PatchNotesParser(commands.Cog):
 
         # set the date the patch notes were published
         time: 'Tag | None' = soup.find("time")
-        if time is None:
-            await self.__auto_report(ctx, "Could not get article published date.")
-            return
-        self.published_date = DatetimeParser.parse(time["datetime"]).date()
+        if time is not None:
+            self.published_date = DatetimeParser.parse(time["datetime"]).date()
+        else:
+            return await self.__auto_report(ctx, "Could not get article published date.")
 
         # patch notes context
         context: 'Tag | None' = soup.find("blockquote", {"class": "context"})
@@ -188,24 +188,21 @@ class PatchNotesParser(commands.Cog):
         for designer_span in designer_elements:
             designer = Designer(designer_span.text.strip().title())
             if designer.username is None:
-                await ctx.send(f"Could not extract username from `context-designer`. "
-                               "Please report this issue using "
-                               "`^ pnparser report <message>`.")
-                return
+                return await self.__auto_report(ctx, f"Could not extract username from `context-designer`. "
+                                                "Please report this issue using "
+                                                "`^ pnparser report <message>`.")
             if designer.icon is None:
                 # TODO: Somehow try to automate this process
-                await ctx.send(f"Could not parse {designer.username}'s designer icon.\n"
-                               "Use `^pnparser designer seticon <designer_name> <designer_icon>` "
-                               "to add a new designer and icon to my database.")
-                return
+                return await self.__auto_report(ctx, f"Could not parse {designer.username}'s designer icon.\n"
+                                                "Use `^pnparser designer seticon <designer_name> <designer_icon>` "
+                                                "to add a new designer and icon to my database.")
             self.designers.append(designer)
 
         # gets the root div where all the patch notes are
         root: 'Tag | None' = soup.find(
             "div", {"class": "style__Content-tkcm0t-1"})
         if root is None:
-            await ctx.send("Could not locate the main patch notes `<div>`.")
-            return
+            return await self.__auto_report(ctx, "Could not locate the main patch notes `<div>`.")
 
         section_id: int = 1
         border: 'Border | None' = None
@@ -217,11 +214,10 @@ class PatchNotesParser(commands.Cog):
             # everything is under "patch-notes-container"
             # it isn't always like this though
             container = list(filter(lambda tag:
-                                    isinstance(tag, Tag),
+                                    isinstance(tag, Tag) and
+                                    tag.has_attr("class"),
                                     container[0].children))
         for tag in container:
-            if not tag.has_attr("class"):
-                continue
             if tag.name == "header" and "header-primary" in tag["class"]:
                 section = Section(section_id, tag.text.strip().title())
                 self.sections.append(section)
@@ -229,14 +225,61 @@ class PatchNotesParser(commands.Cog):
                 border = None
             elif tag.name == "div" and "content-border" in tag["class"]:
                 if section is None:
-                    await self.__auto_report(ctx, 'HTML node with `class="content-border"` '
-                                             'found before the `"header-primary"` was defined.')
-                    return
-                await ctx.send(section.title)
+                    return await self.__auto_report(ctx, 'HTML node with `class="content-border"` '
+                                                    'found before the `"header-primary"` was defined.')
+
+                content_list: Iterator[Tag] = filter(lambda tag:
+                                                     isinstance(tag, Tag) and
+                                                     tag.has_attr("class"),
+                                                     tag.div.div.children)
+
+                # handles mid-patch updates
+                if section.title == "Mid-Patch Updates":
+                    await self.__midpatch(ctx, border, section, content_list)
         await ctx.send("Patch notes parsed successfully.\n"
                        "See at: {placeholder}\n\n"
                        "To report issues with the parser use "
                        "`^pnparser report <message>`.")
+
+    async def __midpatch(self, ctx: GuildContext, border: 'Border | None', section: Section, content_list: Iterator[Tag]) -> None:
+        change: 'Pnb | None' = None
+        ability: 'Pai | None' = None
+
+        # loop through all the mid-patch updates
+        for content in content_list:
+            if "change-title" in content["class"]:
+                # border is not defined or its title is
+                # different from the current border title
+                if border is None or border.title != content.text.strip():
+                    border = Border(content.text.strip())
+                    section.borders.append(border)
+                    continue
+
+            # could not find the border title
+            if border.title is None or str.isspace(border.title):
+                return await self.__auto_report(ctx, "Could not locate an HTML node with class 'change-title'.")
+
+            # border context text
+            elif "content" in content["class"]:
+                border.contexxt = content.text.strip()
+            # attribute is from a champion ability
+            elif "ability-title" in content["class"]:
+                change = Pnb(content.text.strip())
+                border.changes.append(change)
+
+            # handles champion or item attribute change
+            elif "attribute-change" in content["class"]:
+                attribute: 'Pbc | None' = None
+
+                if change is None:
+                    return await self.__auto_report(ctx, 'HTML node with class="attribute-change" '
+                                                    'found before the first "ability-title" was defined.')
+
+                # get all the properties of the current attribute
+                for attribute_info in content.children:
+                    if attribute_info["class"] == "attribute":
+                        attribute_name: str = attribute_info.text.strip()
+                        await ctx.send(attribute_name)
 
     @parse.command()
     async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
