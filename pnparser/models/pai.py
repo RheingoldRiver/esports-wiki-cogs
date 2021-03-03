@@ -5,8 +5,9 @@ if TYPE_CHECKING:
 
 
 class Pai:
-    def __init__(self) -> None:
-        self.name: str = ""
+    """Champion abilities"""
+    def __init__(self, name: str) -> None:
+        self.name: str = name
         self.attributes: 'list[Pbc]' = []
 
     def print(self) -> str:

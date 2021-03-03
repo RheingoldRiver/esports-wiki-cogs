@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 
 
 class Pnb:
+    """A champion or item change"""
     def __init__(self, name: str) -> None:
         self.__name: str = ""
         self.name = name
@@ -14,7 +15,7 @@ class Pnb:
         self.summary: str = ""
         self.changes: 'list[Pnb]' = []
         self.attributes: 'list[Pbc]' = []
-        self.abiliries: 'list[Pai]' = []
+        self.abilities: 'list[Pai]' = []
 
     @property
     def name(self) -> str:
