@@ -11,8 +11,8 @@ RUNES: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforge
 
 
 class DataDragon:
-    items: dict = {}
     runes: dict = {}
+    items: 'list[dict[str, Any]]' = []
     champions: 'list[dict[str, Any]]' = []
     current_version: 'str | None' = None
 
@@ -30,9 +30,14 @@ class DataDragon:
         for champion in data:
             DataDragon.champions.append(data[champion])
 
-        # TODO: fix the remaining lists
+        # get items from data dragon
         response = HttpClient.get(ITEMS.format(f"{latest_version}"))
-        DataDragon.items = Json.loads(response.text)["data"]
+        data = Json.loads(response.text)["data"]
+        DataDragon.items = []
+        for item in data:
+            DataDragon.items.append(data[item])
+
+        # TODO: fix the remaining lists
         response = HttpClient.get(RUNES.format(f"{latest_version}"))
         DataDragon.runes = Json.loads(response.text)
         DataDragon.current_version = latest_version
