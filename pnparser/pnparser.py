@@ -1,3 +1,4 @@
+from attr import attr
 from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
 from typing import Any, Iterator
@@ -28,6 +29,16 @@ def tags(tag: Any) -> bool:
 # check if the given name has the ability key preffix
 def match_ability(ability_info: str) -> 'Regex.Match[str] | None':
     return Regex.search(r'([QWER]|(PASSIVE))\s-\s', ability_info)
+
+
+# known champion ability base attributes
+def ability_base_attributes() -> 'list[str]':
+    return ["Cooldown",
+            "First Hit Bonus Damage",
+            "Damage",
+            "Cost",
+            "Move Speed",
+            "Second Hit Healing Vs. Minions"]
 
 
 class PatchNotesParser(commands.Cog):
@@ -63,7 +74,7 @@ class PatchNotesParser(commands.Cog):
                                        f"https://discord.com/channels/{ctx.guild.id}/"
                                        f"{ctx.channel.id}/{ctx.message.id}\n"
                                        f"```fix\n{message}\n```"
-                                       f"\n**Additional information**\n"
+                                       "\n**Additional information**\n"
                                        f"Patch notes: {self.patch_url}\n```python\n"
                                        f"Cog version: {CURRENT_VERSION}\n"
                                        f"Data Dragon version: {DataDragon.current_version}\n```")
@@ -74,6 +85,7 @@ class PatchNotesParser(commands.Cog):
     @commands.group()
     async def pnparser(self, ctx: GuildContext) -> None:
         """A League of Legends patch notes parser"""
+        pass
 
     @pnparser.command()
     async def version(self, ctx: GuildContext) -> None:
@@ -89,7 +101,7 @@ class PatchNotesParser(commands.Cog):
                                        f"*{ctx.guild.name} - #{ctx.channel.name}:*\n"
                                        f"https://discord.com/channels/{ctx.guild.id}/"
                                        f"{ctx.channel.id}/{ctx.message.id}\n{' '.join(message)}\n"
-                                       f"\n**Additional information**\n"
+                                       "\n**Additional information**\n"
                                        f"Patch notes: {self.patch_url}\n```python\n"
                                        f"Cog version: {CURRENT_VERSION}\n"
                                        f"Data Dragon version: {DataDragon.current_version}\n```")
@@ -111,6 +123,7 @@ class PatchNotesParser(commands.Cog):
     @pnparser.group()
     async def designer(self, ctx: GuildContext) -> None:
         """Commands to get information related to patch notes designers"""
+        pass
 
     @designer.command()
     async def geticon(self, ctx: GuildContext, designer_name: str) -> None:
@@ -121,6 +134,7 @@ class PatchNotesParser(commands.Cog):
     async def seticon(self, ctx: GuildContext, designer_name: str, designer_icon: str) -> None:
         """Set a new icon for the specified designer"""
         # TODO: Set new icon
+        pass
 
     @designer.command()
     async def add(self, ctx: GuildContext, designer_name: str, designer_icon: str) -> None:
@@ -131,6 +145,7 @@ class PatchNotesParser(commands.Cog):
     @pnparser.group()
     async def ddragon(self, ctx: GuildContext) -> None:
         """Commands to get information related to ddragon"""
+        pass
 
     @ddragon.command("version")
     async def ddragon_version(self, ctx: GuildContext) -> None:
@@ -150,6 +165,13 @@ class PatchNotesParser(commands.Cog):
     @pnparser.group()
     async def parse(self, ctx: GuildContext) -> None:
         """Commands to parse League of Legends patch notes"""
+        pass
+
+    @parse.command()
+    async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
+        """Parse the mid-patch section from the specified patch notes"""
+        # TODO: Parse mid-patch
+        pass
 
     @parse.command()
     async def all(self, ctx: GuildContext, patch_version: str) -> None:
@@ -160,8 +182,7 @@ class PatchNotesParser(commands.Cog):
             await ctx.send("Incorrect patch notes version number format.")
             return
 
-        self.patch_url = BASE_ADDRESS.format(
-            self.patch_version.replace('.', '-'))
+        self.patch_url = BASE_ADDRESS.format(self.patch_version.replace('.', '-'))
         response = HttpClient.get(self.patch_url)
 
         # something went wrong
@@ -181,8 +202,7 @@ class PatchNotesParser(commands.Cog):
         time: 'Tag | None' = soup.find("time")
         if time is not None:
             self.published_date = DatetimeParser.parse(time["datetime"]).date()
-        else:
-            return await self.__auto_report(ctx, "Could not get article published date.")
+        else: return await self.__auto_report(ctx, "Could not get article published date.")
 
         # patch notes context
         context: 'Tag | None' = soup.find("blockquote", {"class": "context"})
@@ -193,26 +213,19 @@ class PatchNotesParser(commands.Cog):
         self.context = self.context.rstrip()
 
         # patch notes designers
-        designer_elements: 'list[Tag]' = soup.find_all(
-            "span", {"class": "context-designer"})
+        designer_elements: 'list[Tag]' = soup.find_all("span", {"class": "context-designer"})
         for designer_span in designer_elements:
             designer = Designer(designer_span.text.strip().title())
             if designer.username is None:
-                return await self.__auto_report(ctx, f"Could not extract username from `context-designer`. "
-                                                "Please report this issue using "
-                                                "`^ pnparser report <message>`.")
+                return await self.__auto_report(ctx, f"Could not extract username from `context-designer`.")
             if designer.icon is None:
                 # TODO: Somehow try to automate this process
-                return await self.__auto_report(ctx, f"Could not parse {designer.username}'s designer icon.\n"
-                                                "Use `^pnparser designer seticon <designer_name> <designer_icon>` "
-                                                "to add a new designer and icon to my database.")
+                return await self.__auto_report(ctx, f"Could not parse {designer.username}'s designer icon.")
             self.designers.append(designer)
 
         # gets the root div where all the patch notes are
-        root: 'Tag | None' = soup.find(
-            "div", {"class": "style__Content-tkcm0t-1"})
-        if root is None:
-            return await self.__auto_report(ctx, "Could not locate the main patch notes `<div>`.")
+        root: 'Tag | None' = soup.find("div", {"class": "style__Content-tkcm0t-1"})
+        if root is None: return await self.__auto_report(ctx, "Could not locate the main patch notes `<div>`.")
 
         section_id: int = 1
         border: 'Border | None' = None
@@ -223,24 +236,29 @@ class PatchNotesParser(commands.Cog):
         if len(container) == 1:
             # everything is under "patch-notes-container"
             # it isn't always like this though
+            # TODO: handle the other case
             container = list(filter(tags, container[0].children))
-        for tag in container:
-            if tag.name == "header" and "header-primary" in tag["class"]:
+
+        for tag in container:            
+            # section headers
+            if "header-primary" in tag["class"]:
                 section = Section(section_id, tag.text.strip().title())
                 self.sections.append(section)
                 section_id += 1
                 border = None
-            elif tag.name == "div" and "content-border" in tag["class"]:
+            
+            # section content
+            elif "content-border" in tag["class"]:
                 if section is None:
                     return await self.__auto_report(ctx, 'HTML node with `class="content-border"` '
                                                     'found before the `"header-primary"` was defined.')
-
-                content_list: Iterator[Tag] = filter(
-                    tags, tag.div.div.children)
+                content_list: Iterator[Tag] = filter(tags, tag.div.div.children)
 
                 # handles mid-patch updates
                 if section.title == "Mid-Patch Updates":
                     await self.__midpatch(ctx, border, section, content_list)
+                    
+        # parsing complete
         await ctx.send("Patch notes parsed successfully.\n"
                        "See at: {placeholder}\n\n"
                        "To report issues with the parser use "
@@ -261,41 +279,125 @@ class PatchNotesParser(commands.Cog):
                     continue
 
             # could not find the border title
-            if border.title is None or str.isspace(border.title):
+            if border.title is None or border.title.isspace():
                 return await self.__auto_report(ctx, "Could not locate an HTML node with class 'change-title'.")
 
             # border context text
-            elif "content" in content["class"]:
-                border.contexxt = content.text.strip()
+            elif "context" in content["class"]:
+                border.context = content.text.strip()
+
             # attribute is from a champion ability
             elif "ability-title" in content["class"]:
                 change = Pnb(content.text.strip())
-                border.changes.append(change)
+                
+                # simplified borders don't have changes
+                if not border.simplified:
+                    border.changes.append(change)
 
             # handles champion or item attribute change
             elif "attribute-change" in content["class"]:
                 attribute: 'Pbc | None' = None
-
-                if change is None:
-                    return await self.__auto_report(ctx, 'HTML node with class="attribute-change" '
-                                                    'found before the first "ability-title" was defined.')
+                if change is None: return await self.__auto_report(ctx, 'HTML node with class="attribute-change" found '
+                                                                   'before the first "ability-title" was defined.')
 
                 # get all the properties of the current attribute
-                for attribute_info in filter(tags, content.children):
-                    if "attribute" in attribute_info["class"]:
-                        attribute_name: str = attribute_info.text.strip()
+                for attribute_tag in filter(tags, content.children):
+                    if "attribute" in attribute_tag["class"]:
+                        attribute_info: str = attribute_tag.text.strip().title()
 
                         # the current change reffers to a champion
                         if any(x["name"] == change.name for x in DataDragon.champions):
 
                             # attribute is from an ability
-                            result = match_ability(attribute_name)
+                            result = match_ability(attribute_info)
                             if result is not None:
-                                ability_info: str = attribute_name[result.span()[0] +
-                                                                   len(result.group(0)):]
-                                await ctx.send(ability_info)
 
-    @parse.command()
-    async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
-        """Parse the mid-patch section from the specified patch notes"""
-        # TODO: Parse mid-patch
+                                # get a substring that contains only the ability name and base attribute
+                                ability_info: str = attribute_info[result.span()[0] + len(result.group(0)):]
+                                ability_name: str = ""
+
+                                # loop through all of the known ability base attributes
+                                for type in ability_base_attributes():
+                                    if type in ability_info:
+
+                                        # get the substring that contains only the ability name
+                                        ability_name = ability_info[:ability_info.index(type)].rstrip()
+                                        attribute = Pbc(type)
+                                        break
+                                
+                                # attribute not found
+                                if attribute is None:
+                                    
+                                    # check if it was an ability bugfix
+                                    if "Bugfix" in ability_info:
+                                        ability_name = ability_info[:ability_info.index("Bugfix")].rstrip()
+                                        attribute = Pbc("Bugfix")
+                                    else:
+                                        return await self.__auto_report(ctx, "Could not find attribute type "
+                                                                        f"from ability '{ability_info}'.")
+
+                                # avoid duplicate ability
+                                if ability is None or ability.name != ability_name:
+                                    ability = Pai(ability_name)
+                                    change.abilities.append(ability)
+
+                                # add the attribute to the ability
+                                ability.attributes.append(attribute)
+                            
+                            # attribute is from the champion's base stats
+                            elif "Base" in attribute_info:
+
+                                # don't create duplicate base stats
+                                if ability is None or ability.name != "Base Stats":
+                                    ability = Pai("Base Stats")
+                                    change.abilities.append(ability)
+
+                                # add the attribute to the base stats
+                                attribute = Pbc(attribute_info)
+                                ability.attributes.append(attribute)
+
+                            # check if it was a champion bugfix
+                            elif "Bugfix" in attribute_info:
+                                attribute = Pbc("Bugfix")
+                                change.attributes.append(attribute)
+
+                            # no fucking clue of what it is
+                            else: return await self.__auto_report(ctx, f"Was not expecting any more champion "
+                                                                "attributes but found '{attribute_info}'.")
+
+                        # the current change reffers to an item
+                        elif any(x["name"] == change.name for x in DataDragon.items):
+                            attribute = Pbc(attribute_info)
+                            change.attributes.append(attribute)
+                        
+                        else:
+                            # handle as simplified list
+                            if border is None or border.context and border.context != change.name:
+                                border = Border(context=change.name, simplified=True)
+                                section.borders.append(border)
+                            
+                            # reuse existing border
+                            elif border.context != change.name:
+                                border.context = change.name
+                                border.simplified = True
+                                border.changes = []
+
+                            # create simplified attribute
+                            attribute = Pbc(attribute_info)
+                            border.attributes.append(attribute)
+
+                    elif attribute is None:
+                        return await self.__auto_report(ctx, "Field 'attribute' was not defined.")
+
+                    # handle previous attribute value and "attribute removed" text
+                    elif "attribute-before" or "attribute-removed" in attribute_tag["class"]:
+                        attribute.before = attribute_tag.text.strip()
+
+                    # handle new attribute value
+                    elif "attribute-after" in attribute_tag["class"]:
+                        attribute.after = attribute_tag.text.strip().replace("<strong>", "'''").replace("</strong>", "'''")
+
+            # reset values at the end of a change
+            elif "divider" in content["class"]:
+                change = None
+                ability = None
