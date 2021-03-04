@@ -28,4 +28,4 @@ class Pnb:
         self.__name = value.replace("’", "'")
 
     def print(self) -> str:
-        pass
+        return ""

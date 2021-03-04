@@ -11,4 +11,4 @@ class Pai:
         self.attributes: 'list[Pbc]' = []
 
     def print(self) -> str:
-        pass
+        return ""

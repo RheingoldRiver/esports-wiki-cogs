@@ -7,4 +7,4 @@ class Pbc:
         self.status: 'str | None' = None
 
     def print(self) -> str:
-        pass
+        return ""

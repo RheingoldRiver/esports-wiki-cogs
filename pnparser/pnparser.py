@@ -19,26 +19,6 @@ from .templates import *
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
 
-# templates
-CI: str = "* {{{{ci|{}}}}}\n"
-TEMPLATE_CLOSE: str = "}}}}\n"
-ANCHOR: str = "{{{{Anchor|{0}}}}}'''{{{{ii|{0}}}}}'''\n"
-PATCH_HIGHLIGHTS: str = "[[File:Patch {} Banner.jpg|740px|link=]]"
-
-# raw border html
-OPEN_BORDER_DIV: str = '<div style="margin:12px;border:1px solid #BBB;padding:15px 25px;width:751px;background-color:var(--interface-background)">\n'
-CLOSE_DIV: str = "</div>\n"
-LINE_BREAK: str = "<br>\n"
-
-# filter html elements to those that can be cast to Tag and have classes
-def tags(tag: Any) -> bool:
-    return isinstance(tag, Tag) and tag.has_attr("class")
-
-
-# check if the given name has the ability key preffix
-def match_ability(ability_info: str) -> 'Regex.Match[str] | None':
-    return Regex.search(r'([QWER]|(PASSIVE))\s-\s', ability_info)
-
 
 # known champion ability base attributes
 def ability_base_attributes() -> 'list[str]':
@@ -48,11 +28,7 @@ def ability_base_attributes() -> 'list[str]':
             "Cost",
             "Move Speed",
             "Second Hit Healing Vs. Minions"]
-
-
-# parse title
-def title(title: str) -> str:
-    return f"== {title} ==\n"
+            
 
 class PatchNotesParser(commands.Cog):
 
@@ -95,6 +71,229 @@ class PatchNotesParser(commands.Cog):
                        "An automatic error report was generated and "
                        "someone will look into it.")
 
+    async def __midpatch(self, ctx: GuildContext, border: 'Border | None', section: Section, content_list: Iterator[Tag]) -> None:
+        change: 'Pnb | None' = None
+        ability: 'Pai | None' = None
+
+        # loop through all the mid-patch updates
+        for content in content_list:
+            if "change-title" in content["class"]:
+                # border is not defined or its title is
+                # different from the current border title
+                if border is None or border.title != content.text.strip():
+                    border = Border(content.text.strip())
+                    section.borders.append(border)
+                    continue
+
+            # could not find the border title
+            if border.title is None or border.title.isspace():
+                return await self.__auto_report(ctx, "Could not locate an HTML node with class 'change-title'.")
+
+            # border context text
+            elif "context" in content["class"]:
+                border.context = content.text.strip()
+
+            # attribute is from a champion ability
+            elif "ability-title" in content["class"]:
+                change = Pnb(content.text.strip())
+                
+                # simplified borders don't have changes
+                if not border.simplified:
+                    border.changes.append(change)
+
+            # handles champion or item attribute change
+            elif "attribute-change" in content["class"]:
+                attribute: 'Pbc | None' = None
+                if change is None: return await self.__auto_report(ctx, 'HTML node with class="attribute-change" found '
+                                                                   'before the first "ability-title" was defined.')
+
+                # get all the properties of the current attribute
+                for attribute_tag in filter(lambda tag:
+                                            isinstance(tag, Tag) and
+                                            tag.has_attr("class"),
+                                            content.children):
+                    if "attribute" in attribute_tag["class"]:
+                        attribute_info: str = attribute_tag.text.strip().title()
+
+                        # the current change reffers to a champion
+                        if any(x["name"] == change.name for x in DataDragon.champions):
+
+                            # attribute is from an ability
+                            result = Regex.search(r'([QWER]|(PASSIVE))\s-\s', attribute_info)
+                            if result is not None:
+
+                                # get a substring that contains only the ability name and base attribute
+                                ability_info: str = attribute_info[result.span()[0] + len(result.group(0)):]
+                                ability_name: str = ""
+
+                                # loop through all of the known ability base attributes
+                                for type in ability_base_attributes():
+                                    if type in ability_info:
+
+                                        # get the substring that contains only the ability name
+                                        ability_name = ability_info[:ability_info.index(type)].rstrip()
+                                        attribute = Pbc(type)
+                                        break
+                                
+                                # attribute not found
+                                if attribute is None:
+                                    
+                                    # check if it was an ability bugfix
+                                    if "Bugfix" in ability_info:
+                                        ability_name = ability_info[:ability_info.index("Bugfix")].rstrip()
+                                        attribute = Pbc("Bugfix")
+                                    else:
+                                        return await self.__auto_report(ctx, "Could not find attribute type "
+                                                                        f"from ability '{ability_info}'.")
+
+                                # avoid duplicate ability
+                                if ability is None or ability.name != ability_name:
+                                    ability = Pai(ability_name)
+                                    change.abilities.append(ability)
+
+                                # add the attribute to the ability
+                                ability.attributes.append(attribute)
+                            
+                            # attribute is from the champion's base stats
+                            elif "Base" in attribute_info:
+
+                                # don't create duplicate base stats
+                                if ability is None or ability.name != "Base Stats":
+                                    ability = Pai("Base Stats")
+                                    change.abilities.append(ability)
+
+                                # add the attribute to the base stats
+                                attribute = Pbc(attribute_info)
+                                ability.attributes.append(attribute)
+
+                            # check if it was a champion bugfix
+                            elif "Bugfix" in attribute_info:
+                                attribute = Pbc("Bugfix")
+                                change.attributes.append(attribute)
+
+                            # no fucking clue of what it is
+                            else: return await self.__auto_report(ctx, f"Was not expecting any more champion "
+                                                                "attributes but found '{attribute_info}'.")
+
+                        # the current change reffers to an item
+                        elif any(x["name"] == change.name for x in DataDragon.items):
+                            attribute = Pbc(attribute_info)
+                            change.attributes.append(attribute)
+                        
+                        else:
+                            # handle as simplified list
+                            if border is None or border.context and border.context != change.name:
+                                border = Border(context=change.name, simplified=True)
+                                section.borders.append(border)
+                            
+                            # reuse existing border
+                            elif border.context != change.name:
+                                border.context = change.name
+                                border.simplified = True
+                                border.changes = []
+
+                            # create simplified attribute
+                            attribute = Pbc(attribute_info)
+                            border.attributes.append(attribute)
+
+                    elif attribute is None:
+                        return await self.__auto_report(ctx, "Field 'attribute' was not defined.")
+
+                    # handle previous attribute value and "attribute removed" text
+                    elif "attribute-before" or "attribute-removed" in attribute_tag["class"]:
+                        attribute.before = attribute_tag.text.strip()
+
+                    # handle new attribute value
+                    elif "attribute-after" in attribute_tag["class"]:
+                        attribute.after = attribute_tag.text.strip().replace("<strong>", "'''").replace("</strong>", "'''")
+
+            # reset values at the end of a change
+            elif "divider" in content["class"]:
+                change = None
+                ability = None
+
+    def __print(self) -> str:
+        # header
+        result: str = Templates.PATCH_TABS_HEADER
+        result += Templates.ONLY_INCLUDE
+        result += Templates.BOX_START
+
+        # context
+        # result += 
+        result += Templates.BOX_BREAK
+        result += Templates.NEW_LINE
+
+        # tables of content
+        # result +=
+        result += Templates.BOX_END
+        result += Templates.NEW_LINE
+
+        # patch notes
+        for section in self.sections:
+            result += Templates.TITLE.format(section.title)
+
+            if section.title == "Patch Highlights":
+                result += Templates.OPEN_BORDER_DIV
+                result += '<div style="border:1px solid #BBB; padding:.33em">\n'
+                result += Templates.PATCH_HIGHLIGHTS.format(self.patch_version)
+                result += Templates.CLOSE_DIV + Templates.CLOSE_DIV
+                result += Templates.NEW_LINE
+                continue
+
+            elif section.title == "Upcoming Skins & Chromas":
+                result += Templates.OPEN_BORDER_DIV
+
+                for border in section.borders:
+                    result += f"''<span style=\"color:#555\">{border.context}</span>''\n"
+                    result += Templates.LINE_BREAK
+                    result += "{{{{PatchSplashTable|br=2\n"
+
+                    if section.borders.index(border) == len(section.borders) - 1:
+                        pass
+
+                    else:
+                        pass
+                continue
+            
+            for border in section.borders:
+                context: str = border.print(section)
+
+                if context and not context.isspace():
+                    result += context
+                
+                for change in border.changes:
+                    result += change.print()
+
+                    for attribute in change.attributes:
+                        result += attribute.print()
+                    
+                    if any(x["name"] == change.name for x in DataDragon.champions):
+                        for ability in change.abilities:
+                            result += ability.print()
+
+                            for attribute in ability.attributes:
+                                result += attribute.print()
+                        
+                        if result[:1] == "=":
+                            result = result[:9]
+                    else:
+                        for inner_change in change.changes:
+                            if any(x["name"] == change.name for x in DataDragon.champions):
+                                if result[:1] == "=":
+                                    result = result[:9]
+
+                                result += Templates.CI.format(inner_change.name)
+                                for ability in inner_change.abilities:
+                                    result += ability.print()
+                            else:
+                                result += Templates.ANCHOR.format(inner_change)
+                                for attribute in inner_change.attributes:
+                                    result += attribute.print()
+                    result += Templates.TEMPLATE_END
+            result += Templates.NEW_LINE
+        result += Templates.PATCH_LIST_NAVBOX
+        return result
+        
     @commands.group()
     async def pnparser(self, ctx: GuildContext) -> None:
         """A League of Legends patch notes parser"""
@@ -249,7 +448,10 @@ class PatchNotesParser(commands.Cog):
             # everything is under "patch-notes-container"
             # it isn't always like this though
             # TODO: handle the other case
-            container = list(filter(tags, container[0].children))
+            container = list(filter(lambda tag:
+                                    isinstance(tag, Tag) and
+                                    tag.has_attr("class"),
+                                    container[0].children))
 
         for tag in container:            
             # section headers
@@ -264,220 +466,34 @@ class PatchNotesParser(commands.Cog):
                 if section is None:
                     return await self.__auto_report(ctx, 'HTML node with `class="content-border"` '
                                                     'found before the `"header-primary"` was defined.')
-                content_list: Iterator[Tag] = filter(tags, tag.div.div.children)
+                content_list: Iterator[Tag] = filter(lambda tag:
+                                                    isinstance(tag, Tag),
+                                                    tag.div.div.children)
 
                 # handles mid-patch updates
                 if section.title == "Mid-Patch Updates":
                     await self.__midpatch(ctx, border, section, content_list)
-        
+            
+                # handles patch highlights
+                elif section.title == "Patch Highlights":
+                    border_context = list(filter(lambda tag: tag.name == "p", content_list))
+                    border = Border()
+                    
+                    if len(border_context) > 0:
+                        border.context = border_context[-1].text.strip()
+
+                    # context might be nested in html
+                    if not border.context or border.context.isspace():
+                        border_context = list(filter(lambda tag: tag.name == "div", content_list))
+                        if len(border_context) > 0:
+                            border.context = border_context[-1].p.text.strip()
+                    section.borders.append(border)
+                    
         # print
-        await ctx.send(self.__print())
+        await ctx.send(f"```\n{self.__print()}\n```")
 
         # parsing complete
         await ctx.send("Patch notes parsed successfully.\n"
                        "See at: {placeholder}\n\n"
                        "To report issues with the parser use "
                        "`^pnparser report <message>`.")
-
-    async def __midpatch(self, ctx: GuildContext, border: 'Border | None', section: Section, content_list: Iterator[Tag]) -> None:
-        change: 'Pnb | None' = None
-        ability: 'Pai | None' = None
-
-        # loop through all the mid-patch updates
-        for content in content_list:
-            if "change-title" in content["class"]:
-                # border is not defined or its title is
-                # different from the current border title
-                if border is None or border.title != content.text.strip():
-                    border = Border(content.text.strip())
-                    section.borders.append(border)
-                    continue
-
-            # could not find the border title
-            if border.title is None or border.title.isspace():
-                return await self.__auto_report(ctx, "Could not locate an HTML node with class 'change-title'.")
-
-            # border context text
-            elif "context" in content["class"]:
-                border.context = content.text.strip()
-
-            # attribute is from a champion ability
-            elif "ability-title" in content["class"]:
-                change = Pnb(content.text.strip())
-                
-                # simplified borders don't have changes
-                if not border.simplified:
-                    border.changes.append(change)
-
-            # handles champion or item attribute change
-            elif "attribute-change" in content["class"]:
-                attribute: 'Pbc | None' = None
-                if change is None: return await self.__auto_report(ctx, 'HTML node with class="attribute-change" found '
-                                                                   'before the first "ability-title" was defined.')
-
-                # get all the properties of the current attribute
-                for attribute_tag in filter(tags, content.children):
-                    if "attribute" in attribute_tag["class"]:
-                        attribute_info: str = attribute_tag.text.strip().title()
-
-                        # the current change reffers to a champion
-                        if any(x["name"] == change.name for x in DataDragon.champions):
-
-                            # attribute is from an ability
-                            result = match_ability(attribute_info)
-                            if result is not None:
-
-                                # get a substring that contains only the ability name and base attribute
-                                ability_info: str = attribute_info[result.span()[0] + len(result.group(0)):]
-                                ability_name: str = ""
-
-                                # loop through all of the known ability base attributes
-                                for type in ability_base_attributes():
-                                    if type in ability_info:
-
-                                        # get the substring that contains only the ability name
-                                        ability_name = ability_info[:ability_info.index(type)].rstrip()
-                                        attribute = Pbc(type)
-                                        break
-                                
-                                # attribute not found
-                                if attribute is None:
-                                    
-                                    # check if it was an ability bugfix
-                                    if "Bugfix" in ability_info:
-                                        ability_name = ability_info[:ability_info.index("Bugfix")].rstrip()
-                                        attribute = Pbc("Bugfix")
-                                    else:
-                                        return await self.__auto_report(ctx, "Could not find attribute type "
-                                                                        f"from ability '{ability_info}'.")
-
-                                # avoid duplicate ability
-                                if ability is None or ability.name != ability_name:
-                                    ability = Pai(ability_name)
-                                    change.abilities.append(ability)
-
-                                # add the attribute to the ability
-                                ability.attributes.append(attribute)
-                            
-                            # attribute is from the champion's base stats
-                            elif "Base" in attribute_info:
-
-                                # don't create duplicate base stats
-                                if ability is None or ability.name != "Base Stats":
-                                    ability = Pai("Base Stats")
-                                    change.abilities.append(ability)
-
-                                # add the attribute to the base stats
-                                attribute = Pbc(attribute_info)
-                                ability.attributes.append(attribute)
-
-                            # check if it was a champion bugfix
-                            elif "Bugfix" in attribute_info:
-                                attribute = Pbc("Bugfix")
-                                change.attributes.append(attribute)
-
-                            # no fucking clue of what it is
-                            else: return await self.__auto_report(ctx, f"Was not expecting any more champion "
-                                                                "attributes but found '{attribute_info}'.")
-
-                        # the current change reffers to an item
-                        elif any(x["name"] == change.name for x in DataDragon.items):
-                            attribute = Pbc(attribute_info)
-                            change.attributes.append(attribute)
-                        
-                        else:
-                            # handle as simplified list
-                            if border is None or border.context and border.context != change.name:
-                                border = Border(context=change.name, simplified=True)
-                                section.borders.append(border)
-                            
-                            # reuse existing border
-                            elif border.context != change.name:
-                                border.context = change.name
-                                border.simplified = True
-                                border.changes = []
-
-                            # create simplified attribute
-                            attribute = Pbc(attribute_info)
-                            border.attributes.append(attribute)
-
-                    elif attribute is None:
-                        return await self.__auto_report(ctx, "Field 'attribute' was not defined.")
-
-                    # handle previous attribute value and "attribute removed" text
-                    elif "attribute-before" or "attribute-removed" in attribute_tag["class"]:
-                        attribute.before = attribute_tag.text.strip()
-
-                    # handle new attribute value
-                    elif "attribute-after" in attribute_tag["class"]:
-                        attribute.after = attribute_tag.text.strip().replace("<strong>", "'''").replace("</strong>", "'''")
-
-            # reset values at the end of a change
-            elif "divider" in content["class"]:
-                change = None
-                ability = None
-
-    def __print(self) -> str:
-        result: str = ""
-
-        for section in self.sections:
-            result += title(section.title)
-
-            if section.title == "Patch Highlights":
-                result += OPEN_BORDER_DIV
-                result += '<div style="border:1px solid #BBB; padding:.33em">\n'
-                f'{PATCH_HIGHLIGHTS.format(self.patch_version) + CLOSE_DIV + CLOSE_DIV}\n'
-                continue
-
-            elif section.title == "Upcoming Skins & Chromas":
-                result += OPEN_BORDER_DIV
-
-                for border in section.borders:
-                    result += f"''<span style=\"color:#555\">{border.context}</span>''\n"
-                    result += LINE_BREAK
-                    result += "{{{{PatchSplashTable|br=2\n"
-
-                    if section.borders.index(border) == len(section.borders) - 1:
-                        pass
-
-                    else:
-                        pass
-                continue
-            
-            for border in section.borders:
-                context: str = border.print(section)
-
-                if context and not context.isspace():
-                    result += context
-                
-                for change in border.changes:
-                    result += change.print()
-
-                    for attribute in change.attributes:
-                        result += attribute.print()
-                    
-                    if any(x["name"] == change.name for x in DataDragon.champions):
-                        for ability in change.abilities:
-                            result += ability.print()
-
-                            for attribute in ability.attributes:
-                                result += attribute.print()
-                        
-                        if result[:1] == "=":
-                            result = result[:9]
-                    else:
-                        for inner_change in change.changes:
-                            if any(x["name"] == change.name for x in DataDragon.champions):
-                                if result[:1] == "=":
-                                    result = result[:9]
-
-                                result += CI.format(inner_change.name)
-                                for ability in inner_change.abilities:
-                                    result += ability.print()
-                            else:
-                                result += ANCHOR.format(inner_change)
-                                for attribute in inner_change.attributes:
-                                    result += attribute.print()
-                    result += TEMPLATE_CLOSE
-            result += "\n"
-        return result
