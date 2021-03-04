@@ -1,4 +1,3 @@
-from redbot.core.commands import Context
 import requests as HttpClient
 from typing import Any
 import json as Json
@@ -17,7 +16,7 @@ class DataDragon:
     current_version: 'str | None' = None
 
     @staticmethod
-    async def load_data(ctx: Context) -> None:
+    def load_data() -> None:
         # check if update is needed
         latest_version: str = DataDragon.__get_latest_version()
         if latest_version == DataDragon.current_version:
@@ -41,7 +40,6 @@ class DataDragon:
         response = HttpClient.get(RUNES.format(f"{latest_version}"))
         DataDragon.runes = Json.loads(response.text)
         DataDragon.current_version = latest_version
-        await ctx.send(f"Updated ddragon to version `{DataDragon.current_version}`.")
 
     @staticmethod
     def __get_latest_version() -> str:
