@@ -19,6 +19,16 @@ from .templates import *
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
 
+# templates
+CI: str = "* {{{{ci|{}}}}}\n"
+TEMPLATE_CLOSE: str = "}}}}\n"
+ANCHOR: str = "{{{{Anchor|{0}}}}}'''{{{{ii|{0}}}}}'''\n"
+PATCH_HIGHLIGHTS: str = "[[File:Patch {} Banner.jpg|740px|link=]]"
+
+# raw border html
+OPEN_BORDER_DIV: str = '<div style="margin:12px;border:1px solid #BBB;padding:15px 25px;width:751px;background-color:var(--interface-background)">\n'
+CLOSE_DIV: str = "</div>\n"
+LINE_BREAK: str = "<br>\n"
 
 # filter html elements to those that can be cast to Tag and have classes
 def tags(tag: Any) -> bool:
@@ -39,6 +49,10 @@ def ability_base_attributes() -> 'list[str]':
             "Move Speed",
             "Second Hit Healing Vs. Minions"]
 
+
+# parse title
+def title(title: str) -> str:
+    return f"== {title} ==\n"
 
 class PatchNotesParser(commands.Cog):
 
@@ -255,7 +269,10 @@ class PatchNotesParser(commands.Cog):
                 # handles mid-patch updates
                 if section.title == "Mid-Patch Updates":
                     await self.__midpatch(ctx, border, section, content_list)
-                    
+        
+        # print
+        await ctx.send(self.__print())
+
         # parsing complete
         await ctx.send("Patch notes parsed successfully.\n"
                        "See at: {placeholder}\n\n"
@@ -399,3 +416,68 @@ class PatchNotesParser(commands.Cog):
             elif "divider" in content["class"]:
                 change = None
                 ability = None
+
+    def __print(self) -> str:
+        result: str = ""
+
+        for section in self.sections:
+            result += title(section.title)
+
+            if section.title == "Patch Highlights":
+                result += OPEN_BORDER_DIV
+                result += '<div style="border:1px solid #BBB; padding:.33em">\n'
+                f'{PATCH_HIGHLIGHTS.format(self.patch_version) + CLOSE_DIV + CLOSE_DIV}\n'
+                continue
+
+            elif section.title == "Upcoming Skins & Chromas":
+                result += OPEN_BORDER_DIV
+
+                for border in section.borders:
+                    result += f"''<span style=\"color:#555\">{border.context}</span>''\n"
+                    result += LINE_BREAK
+                    result += "{{{{PatchSplashTable|br=2\n"
+
+                    if section.borders.index(border) == len(section.borders) - 1:
+                        pass
+
+                    else:
+                        pass
+                continue
+            
+            for border in section.borders:
+                context: str = border.print(section)
+
+                if context and not context.isspace():
+                    result += context
+                
+                for change in border.changes:
+                    result += change.print()
+
+                    for attribute in change.attributes:
+                        result += attribute.print()
+                    
+                    if any(x["name"] == change.name for x in DataDragon.champions):
+                        for ability in change.abilities:
+                            result += ability.print()
+
+                            for attribute in ability.attributes:
+                                result += attribute.print()
+                        
+                        if result[:1] == "=":
+                            result = result[:9]
+                    else:
+                        for inner_change in change.changes:
+                            if any(x["name"] == change.name for x in DataDragon.champions):
+                                if result[:1] == "=":
+                                    result = result[:9]
+
+                                result += CI.format(inner_change.name)
+                                for ability in inner_change.abilities:
+                                    result += ability.print()
+                            else:
+                                result += ANCHOR.format(inner_change)
+                                for attribute in inner_change.attributes:
+                                    result += attribute.print()
+                    result += TEMPLATE_CLOSE
+            result += "\n"
+        return result
