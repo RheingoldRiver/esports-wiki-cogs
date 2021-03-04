@@ -1,7 +1,7 @@
-from .parsererrors import ParserError, ParserInvalidFormatError, ParserHttpError
+from .parser_errors import ParserError, ParserInvalidFormatError, ParserHttpError
 from .pnparser_main import PatchNotes
-from .templates import Designer
 from .ddragon import DataDragon
+from .models import Designer
 
 
 from redbot.core.commands import GuildContext

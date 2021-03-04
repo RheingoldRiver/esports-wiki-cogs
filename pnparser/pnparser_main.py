@@ -1,4 +1,5 @@
-from .parsererrors import ParserError, ParserInvalidFormatError, ParserHttpError
+from .parser_errors import ParserError, ParserInvalidFormatError, ParserHttpError
+from .models import Section, Designer, Border, Pnb, Pai, Pbc
 from .ddragon import DataDragon
 from .templates import *
 
@@ -283,38 +284,38 @@ class PatchNotes:
         
     def print(self) -> str:
         # header
-        result: str = Templates.PATCH_TABS_HEADER
-        result += Templates.ONLY_INCLUDE
-        result += Templates.BOX_START
+        result: str = PATCH_TABS_HEADER
+        result += ONLY_INCLUDE
+        result += BOX_START
 
         # context
         # result += 
-        result += Templates.BOX_BREAK
-        result += Templates.NEW_LINE
+        result += BOX_BREAK
+        result += NEW_LINE
 
         # tables of content
         # result +=
-        result += Templates.BOX_END
-        result += Templates.NEW_LINE
+        result += BOX_END
+        result += NEW_LINE
 
         # patch notes
         for section in self.sections:
-            result += Templates.TITLE.format(section.title)
+            result += TITLE.format(section.title)
 
             if section.title == "Patch Highlights":
-                result += Templates.OPEN_BORDER_DIV
+                result += OPEN_BORDER_DIV
                 result += '<div style="border:1px solid #BBB; padding:.33em">\n'
-                result += Templates.PATCH_HIGHLIGHTS.format(self.patch_version)
-                result += Templates.CLOSE_DIV + Templates.CLOSE_DIV
-                result += Templates.NEW_LINE
+                result += PATCH_HIGHLIGHTS.format(self.patch_version)
+                result += CLOSE_DIV + CLOSE_DIV
+                result += NEW_LINE
                 continue
 
             elif section.title == "Upcoming Skins & Chromas":
-                result += Templates.OPEN_BORDER_DIV
+                result += OPEN_BORDER_DIV
 
                 for border in section.borders:
                     result += f"''<span style=\"color:#555\">{border.context}</span>''\n"
-                    result += Templates.LINE_BREAK
+                    result += LINE_BREAK
                     result += "{{{{PatchSplashTable|br=2\n"
 
                     if section.borders.index(border) == len(section.borders) - 1:
@@ -351,14 +352,14 @@ class PatchNotes:
                                 if result[:1] == "=":
                                     result = result[:9]
 
-                                result += Templates.CI.format(inner_change.name)
+                                result += CI.format(inner_change.name)
                                 for ability in inner_change.abilities:
                                     result += ability.print()
                             else:
-                                result += Templates.ANCHOR.format(inner_change)
+                                result += ANCHOR.format(inner_change)
                                 for attribute in inner_change.attributes:
                                     result += attribute.print()
-                    result += Templates.TEMPLATE_END
-            result += Templates.NEW_LINE
-        result += Templates.PATCH_LIST_NAVBOX
+                    result += TEMPLATE_END
+            result += NEW_LINE
+        result += PATCH_LIST_NAVBOX
         return result

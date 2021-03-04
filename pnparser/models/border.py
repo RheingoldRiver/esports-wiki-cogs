@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from .templates import Templates
+from ..templates import *
 
 if TYPE_CHECKING:
     from .pnb import Pnb
@@ -21,7 +21,7 @@ class Border:
         result: str = ""
 
         if self.title and not self.title.isspace():
-            result += Templates.SUBTITLE.format(self.title)
+            result += SUBTITLE.format(self.title)
         
         if self.simplified:
             if section.title == "ARAM Balance Changes":
@@ -33,15 +33,15 @@ class Border:
                     result += attribute.print()
 
                 if section.borders.index(self) == len(section.borders) - 1:
-                    result += Templates.TEMPLATE_END
+                    result += TEMPLATE_END
             else:
-                result += Templates.OPEN_BORDER_DIV
+                result += OPEN_BORDER_DIV
                 result += self.context[:1]
 
                 for attribute in self.attributes:
                     result += attribute.print()
 
-                result += Templates.CLOSE_DIV
+                result += CLOSE_DIV
         elif self.context and not self.context.isspace():
             result += f"''{self.context}''"
         return result
