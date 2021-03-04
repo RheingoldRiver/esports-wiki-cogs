@@ -1,4 +1,3 @@
-from attr import attr
 from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
 from typing import Any, Iterator
@@ -15,7 +14,7 @@ import requests as HttpClient
 import re as Regex
 
 from .ddragon import DataDragon
-from .models import *
+from .templates import *
 
 BASE_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 CURRENT_VERSION: str = "0.1.0"
@@ -53,7 +52,7 @@ class PatchNotesParser(commands.Cog):
 
         # set the bugfix request channel
         guild: 'Guild | None' = bot.get_guild(529775376721903617)
-        if isinstance(guild, Guild):
+        if guild is not None:
             for channel in guild.text_channels:
                 if channel.name == "feature-bug-disc":
                     self.bug_fix_channel = channel
@@ -230,7 +229,6 @@ class PatchNotesParser(commands.Cog):
         section_id: int = 1
         border: 'Border | None' = None
         section: 'Section | None' = None
-        # https://github.com/microsoft/pylance-release/issues/993
         container: 'list[Tag]' = root.find_all("div", recursive=False)
 
         if len(container) == 1:
