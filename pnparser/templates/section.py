@@ -17,7 +17,7 @@ class Section:
         result: str = f"|group{self.id}={self.title}"
         
         if not self.title == "Champions" or "Items" or "Runes":
-            return result
+            return result + NEW_LINE
         else:
             icons: str = ""
             result = result[:-1] + NEW_LINE
@@ -39,5 +39,8 @@ class Section:
                         if any(x["name"] == change.name for x in Dragon.runes):
                             icons += f"{change.name}, "
             if icons and not icons.isspace():
-                result += icons[:-2]
+                result += icons[:-2] + NEW_LINE
             return result
+    
+    def print(self) -> str:
+        return TITLE.format(self.title)

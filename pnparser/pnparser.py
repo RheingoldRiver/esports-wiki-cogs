@@ -8,6 +8,7 @@ from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel
 from redbot.core import commands
 import rivercogutils as utils
+import re as Regex
 
 from typing import TYPE_CHECKING
 
@@ -50,6 +51,12 @@ class PatchNotesParser(commands.Cog):
         await ctx.send("Something went wrong and I could not parse.\n"
                        "An automatic error report was generated and "
                        "someone will look into it.")
+
+    def __validate_patch(self, patch_version: str) -> bool:
+        if Regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
+            self.patch_version = patch_version.strip().replace(',', '.').replace('-', '.')
+            return True
+        return False
 
     @commands.group()
     async def pnparser(self, ctx: GuildContext) -> None:
@@ -140,12 +147,21 @@ class PatchNotesParser(commands.Cog):
     @parse.command()
     async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
         """Parse the mid-patch section from the specified patch notes"""
+
         # TODO: Parse mid-patch
-        pass
+        # validate patch notes version number format
+        if not self.__validate_patch(patch_version):
+            await ctx.send("Incorrect patch notes version number format.")
+            return
 
     @parse.command()
     async def all(self, ctx: GuildContext, patch_version: str) -> None:
         """Parse the entire specified patch notes"""
+        
+        # validate patch notes version number format
+        if not self.__validate_patch(patch_version):
+            await ctx.send("Incorrect patch notes version number format.")
+            return
         
         site: 'EsportsClient' = await utils.login_if_possible(ctx, self.bot, 'lol')
 

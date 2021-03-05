@@ -42,12 +42,6 @@ class PatchNotes:
         self.published_date = DateTime.now()
         self.designers: 'list[Designer]' = []
 
-    def __validate_patch(self, patch_version: str) -> bool:
-        if Regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
-            self.patch_version = patch_version.strip().replace(',', '.').replace('-', '.')
-            return True
-        return False
-
     def midpatch(self, border: 'Border | None', section: Section, content_list: 'Iterator[Tag]') -> None:
         change: 'Pnb | None' = None
         ability: 'Pai | None' = None
@@ -190,10 +184,6 @@ class PatchNotes:
                 ability = None
 
     def parse_all(self, patch_version: str) -> 'PatchNotes':
-        # validate patch notes version number format
-        if not self.__validate_patch(patch_version):
-            raise ParserFormatError(self, "Incorrect patch notes version number format.")
-
         self.patch_url = RIOT_ADDRESS.format(self.patch_version.replace('.', '-'))
         response = HttpClient.get(self.patch_url)
 
@@ -324,7 +314,7 @@ class PatchNotes:
 
         # patch notes
         for section in self.sections:
-            result += TITLE.format(section.title)
+            result += section.print()
 
             if section.title == "Patch Highlights":
                 result += OPEN_BORDER_DIV
@@ -340,13 +330,14 @@ class PatchNotes:
                 for border in section.borders:
                     result += f"''<span style=\"color:#555\">{border.context}</span>''\n"
                     result += LINE_BREAK
-                    result += "{{{{PatchSplashTable|br=2\n"
+                    result += "{{PatchSplashTable|br=2\n"
 
                     if section.borders.index(border) == len(section.borders) - 1:
                         pass
 
                     else:
                         pass
+                result += CLOSE_DIV
                 continue
             
             for border in section.borders:
