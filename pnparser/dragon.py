@@ -9,7 +9,7 @@ CHAMPIONS: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion
 RUNES: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforged.json"
 
 
-class DataDragon:
+class Dragon:
     runes: dict = {}
     items: 'list[dict[str, Any]]' = []
     champions: 'list[dict[str, Any]]' = []
@@ -18,28 +18,28 @@ class DataDragon:
     @staticmethod
     def load_data() -> None:
         # check if update is needed
-        latest_version: str = DataDragon.__get_latest_version()
-        if latest_version == DataDragon.current_version:
+        latest_version: str = Dragon.__get_latest_version()
+        if latest_version == Dragon.current_version:
             return
 
         # get champions from data dragon
         response = HttpClient.get(CHAMPIONS.format(f"{latest_version}"))
         data = Json.loads(response.text)["data"]
-        DataDragon.champions = []
+        Dragon.champions = []
         for champion in data:
-            DataDragon.champions.append(data[champion])
+            Dragon.champions.append(data[champion])
 
         # get items from data dragon
         response = HttpClient.get(ITEMS.format(f"{latest_version}"))
         data = Json.loads(response.text)["data"]
-        DataDragon.items = []
+        Dragon.items = []
         for item in data:
-            DataDragon.items.append(data[item])
+            Dragon.items.append(data[item])
 
         # TODO: fix the remaining lists
         response = HttpClient.get(RUNES.format(f"{latest_version}"))
-        DataDragon.runes = Json.loads(response.text)
-        DataDragon.current_version = latest_version
+        Dragon.runes = Json.loads(response.text)
+        Dragon.current_version = latest_version
 
     @staticmethod
     def __get_latest_version() -> str:

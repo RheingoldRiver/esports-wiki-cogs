@@ -1,7 +1,7 @@
-from .parser_errors import ParserError, ParserInvalidFormatError, ParserHttpError
-from .pnparser_main import PatchNotes
-from .ddragon import DataDragon
-from .models import Designer
+from .parser_errors import ParserError, ParserFormatError, ParserHttpError
+from .patch_notes import PatchNotes
+from .templates import Designer
+from .dragon import Dragon
 
 
 from redbot.core.commands import GuildContext
@@ -28,7 +28,7 @@ class PatchNotesParser(commands.Cog):
                     self.bug_fix_channel = channel
                     break
     
-    async def __auto_report(self, ctx: GuildContext, message: str) -> None:
+    async def __auto_report(self, ctx: GuildContext, message: str, patch_notes: PatchNotes) -> None:
         # TODO: remove embeded patch notes info
         await Tunnel.message_forwarder(destination=self.bug_fix_channel,
                                        content="Patch notes parser **auto report** from command "
@@ -38,9 +38,9 @@ class PatchNotesParser(commands.Cog):
                                        f"{ctx.channel.id}/{ctx.message.id}\n"
                                        f"```fix\n{message}\n```"
                                        "\n**Additional information**\n"
-                                       f"Patch notes: {self.patch_notes.patch_url}\n```python\n"
+                                       f"Patch notes: {patch_notes.patch_url}\n```python\n"
                                        f"Cog version: {CURRENT_VERSION}\n"
-                                       f"Data Dragon version: {DataDragon.current_version}\n```")
+                                       f"Data Dragon version: {Dragon.current_version}\n```")
         await ctx.send("Something went wrong and I could not parse.\n"
                        "An automatic error report was generated and "
                        "someone will look into it.")
@@ -67,7 +67,7 @@ class PatchNotesParser(commands.Cog):
                                        "\n**Additional information**\n"
                                        f"Patch notes: {self.patch_notes.patch_url}\n```python\n"
                                        f"Cog version: {CURRENT_VERSION}\n"
-                                       f"Data Dragon version: {DataDragon.current_version}\n```")
+                                       f"Data Dragon version: {Dragon.current_version}\n```")
         await ctx.send("Thank you for reporting this issue.\n"
                        "Someone will look into it and might get in touch "
                        "to let you know when it is fixed.")
@@ -113,16 +113,16 @@ class PatchNotesParser(commands.Cog):
     @ddragon.command("version")
     async def ddragon_version(self, ctx: GuildContext) -> None:
         """Get the current version number"""
-        await ctx.send(f"Current version of ddragon is `{DataDragon.current_version}`.")
+        await ctx.send(f"Current version of ddragon is `{Dragon.current_version}`.")
 
     @ddragon.command()
     async def update(self, ctx: GuildContext) -> None:
         """Get the latest version from Riot"""
-        current_version: 'str | None' = DataDragon.current_version
-        DataDragon.load_data()
+        current_version: 'str | None' = Dragon.current_version
+        Dragon.load_data()
 
         # check if there was an update
-        if current_version == DataDragon.current_version:
+        if current_version == Dragon.current_version:
             await ctx.send(f"Already up to date, latest version is `{current_version}`.")
         else: await ctx.send(f"Updated ddragon to version `{current_version}`.")
 
@@ -154,7 +154,7 @@ class PatchNotesParser(commands.Cog):
                         "`^pnparser report <message>`.")
         
         # pretty print an error message to the user
-        except ParserInvalidFormatError as e:
+        except ParserFormatError as e:
             await ctx.send(e.message)
 
         except ParserHttpError as e:
@@ -162,4 +162,4 @@ class PatchNotesParser(commands.Cog):
 
         # give detailed report to devs
         except ParserError as e:
-            await self.__auto_report(ctx, e.message)
+            await self.__auto_report(ctx, e.message, e.patch_notes)

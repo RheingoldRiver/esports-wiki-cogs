@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from ..templates import *
+from .common import *
 
 if TYPE_CHECKING:
     from .pnb import Pnb
@@ -7,8 +7,11 @@ if TYPE_CHECKING:
     from .section import Section
 
 
+TEMPLATE: str = "{{{{pnbh|context='''{}'''<br>"
+
+
 class Border:
-    # class="content-border"
+    """class=\"content-border\""""
     def __init__(self, title: str = "", context: str = "", simplified: bool = False) -> None:
         self.title: str = title
         self.context: str = context
@@ -26,7 +29,7 @@ class Border:
         if self.simplified:
             if section.title == "ARAM Balance Changes":
                 if section.borders.index(self) == 0:
-                    result += f"{{{{pnbh|context='''{self.context}'''<br>"
+                    result += TEMPLATE.format(self.context)
                 else: result += f"\n'''{self.context}'''<br>"
 
                 for attribute in self.attributes:

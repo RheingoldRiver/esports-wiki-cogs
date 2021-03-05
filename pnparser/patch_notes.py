@@ -1,6 +1,5 @@
-from .parser_errors import ParserError, ParserInvalidFormatError, ParserHttpError
-from .models import Section, Designer, Border, Pnb, Pai, Pbc
-from .ddragon import DataDragon
+from .parser_errors import ParserError, ParserFormatError, ParserHttpError
+from .dragon import Dragon
 from .templates import *
 
 from dateutil import parser as DatetimeParser
@@ -57,7 +56,7 @@ class PatchNotes:
 
             # could not find the border title
             if border.title is None or border.title.isspace():
-                raise ParserError("Could not locate an HTML node with class 'change-title'.")
+                raise ParserError(self, "Could not locate an HTML node with class 'change-title'.")
 
             # border context text
             elif "context" in content["class"]:
@@ -74,7 +73,7 @@ class PatchNotes:
             # handles champion or item attribute change
             elif "attribute-change" in content["class"]:
                 attribute: 'Pbc | None' = None
-                if change is None: raise ParserError('HTML node with class="attribute-change" found '
+                if change is None: raise ParserError(self, 'HTML node with class="attribute-change" found '
                                                     'before the first "ability-title" was defined.')
 
                 # get all the properties of the current attribute
@@ -86,7 +85,7 @@ class PatchNotes:
                         attribute_info: str = attribute_tag.text.strip().title()
 
                         # the current change reffers to a champion
-                        if any(x["name"] == change.name for x in DataDragon.champions):
+                        if any(x["name"] == change.name for x in Dragon.champions):
 
                             # attribute is from an ability
                             result = Regex.search(r'([QWER]|(PASSIVE))\s-\s', attribute_info)
@@ -113,7 +112,7 @@ class PatchNotes:
                                         ability_name = ability_info[:ability_info.index("Bugfix")].rstrip()
                                         attribute = Pbc("Bugfix")
                                     else:
-                                        raise ParserError("Could not find attribute type "
+                                        raise ParserError(self, "Could not find attribute type "
                                                         f"from ability '{ability_info}'.")
 
                                 # avoid duplicate ability
@@ -142,11 +141,11 @@ class PatchNotes:
                                 change.attributes.append(attribute)
 
                             # no fucking clue of what it is
-                            else: raise ParserError("Was not expecting any more champion "
+                            else: raise ParserError(self, "Was not expecting any more champion "
                                                     f"attributes but found '{attribute_info}'.")
 
                         # the current change reffers to an item
-                        elif any(x["name"] == change.name for x in DataDragon.items):
+                        elif any(x["name"] == change.name for x in Dragon.items):
                             attribute = Pbc(attribute_info)
                             change.attributes.append(attribute)
                         
@@ -167,7 +166,7 @@ class PatchNotes:
                             border.attributes.append(attribute)
 
                     elif attribute is None:
-                        raise ParserError("Field 'attribute' was not defined.")
+                        raise ParserError(self, "Field 'attribute' was not defined.")
 
                     # handle previous attribute value and "attribute removed" text
                     elif "attribute-before" or "attribute-removed" in attribute_tag["class"]:
@@ -185,7 +184,7 @@ class PatchNotes:
     def parse_all(self, patch_version: str) -> 'PatchNotes':
         # validate patch notes version number format
         if not self.__validate_patch(patch_version):
-            raise ParserInvalidFormatError("Incorrect patch notes version number format.")
+            raise ParserFormatError(self, "Incorrect patch notes version number format.")
 
         self.patch_url = RIOT_ADDRESS.format(self.patch_version.replace('.', '-'))
         response = HttpClient.get(self.patch_url)
@@ -193,11 +192,11 @@ class PatchNotes:
         # something went wrong
         if not response.status_code == 200:
             # TODO: Try trice and then report
-            raise ParserHttpError("Expected response of type `HTTP 200`, "
+            raise ParserHttpError(self, "Expected response of type `HTTP 200`, "
                                 f"but got back `HTTP {response.status_code}`.")
 
         # assert ddragon is loaded
-        DataDragon.load_data()
+        Dragon.load_data()
 
         # load the html contents of the page
         soup = BeautifulSoup(response.text, "html.parser")
@@ -206,7 +205,7 @@ class PatchNotes:
         time: 'Tag | None' = soup.find("time")
         if time is not None:
             self.published_date = DatetimeParser.parse(time["datetime"]).date()
-        else: raise ParserError("Could not get article published date.")
+        else: raise ParserError(self, "Could not get article published date.")
 
         # patch notes context
         context: 'Tag | None' = soup.find("blockquote", {"class": "context"})
@@ -221,15 +220,15 @@ class PatchNotes:
         for designer_span in designer_elements:
             designer = Designer(designer_span.text.strip().title())
             if designer.username is None:
-                raise ParserError(f"Could not extract username from `context-designer`.")
+                raise ParserError(self, f"Could not extract username from `context-designer`.")
             if designer.icon is None:
                 # TODO: Somehow try to automate this process
-                raise ParserError(f"Could not parse {designer.username}'s designer icon.")
+                raise ParserError(self, f"Could not parse {designer.username}'s designer icon.")
             self.designers.append(designer)
 
         # gets the root div where all the patch notes are
         root: 'Tag | None' = soup.find("div", {"class": "style__Content-tkcm0t-1"})
-        if root is None: raise ParserError("Could not locate the main patch notes `<div>`.")
+        if root is None: raise ParserError(self, "Could not locate the main patch notes `<div>`.")
 
         section_id: int = 1
         border: 'Border | None' = None
@@ -256,7 +255,7 @@ class PatchNotes:
             # section content
             elif "content-border" in tag["class"]:
                 if section is None:
-                    raise ParserError('HTML node with `class="content-border"` '
+                    raise ParserError(self, 'HTML node with `class="content-border"` '
                                     'found before the `"header-primary"` was defined.')
                 content_list: Iterator[Tag] = filter(lambda tag:
                                                     isinstance(tag, Tag),
@@ -337,7 +336,7 @@ class PatchNotes:
                     for attribute in change.attributes:
                         result += attribute.print()
                     
-                    if any(x["name"] == change.name for x in DataDragon.champions):
+                    if any(x["name"] == change.name for x in Dragon.champions):
                         for ability in change.abilities:
                             result += ability.print()
 
@@ -348,7 +347,7 @@ class PatchNotes:
                             result = result[:9]
                     else:
                         for inner_change in change.changes:
-                            if any(x["name"] == change.name for x in DataDragon.champions):
+                            if any(x["name"] == change.name for x in Dragon.champions):
                                 if result[:1] == "=":
                                     result = result[:9]
 
