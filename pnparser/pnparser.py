@@ -1,3 +1,4 @@
+from requests import ReadTimeout
 from .parser_errors import ParserError, ParserFormatError, ParserHttpError
 from .patch_notes import PatchNotes
 from .templates import Designer
@@ -145,15 +146,17 @@ class PatchNotesParser(commands.Cog):
     @parse.command()
     async def all(self, ctx: GuildContext, patch_version: str) -> None:
         """Parse the entire specified patch notes"""
+        
         site: 'EsportsClient' = await utils.login_if_possible(ctx, self.bot, 'lol')
 
         try:
             # parse
+            await ctx.send("Parsing...")
             self.patch_notes = PatchNotes(site).parse_all(patch_version)
 
             # parsing complete
             await ctx.send("Patch notes parsed successfully.\n"
-                        "See at: {placeholder}\n\n"
+                        f"See at: https://lol.gamepedia.com/{self.patch_notes.page_url}\n\n"
                         "To report issues with the parser use "
                         "`^pnparser report <message>`.")
         
@@ -167,3 +170,6 @@ class PatchNotesParser(commands.Cog):
         # give detailed report to devs
         except ParserError as e:
             await self.__auto_report(ctx, e.message, e.patch_notes)
+
+        except ReadTimeout:
+            await ctx.send("Whoops, the site is taking too long to respond, try again later.")

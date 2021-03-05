@@ -34,6 +34,7 @@ def ability_base_attributes() -> 'list[str]':
 class PatchNotes:
     def __init__(self, site: 'EsportsClient') -> None:
         self.context: str = ""
+        self.page_url: str = ""
         self.patch_version: str = ""
         self.site: 'EsportsClient' = site
         self.patch_url: 'str | None' = None
@@ -313,7 +314,11 @@ class PatchNotes:
         result += NEW_LINE
 
         # tables of content
-        # result +=
+        result += "{{PatchNotesTOC"
+        for section in self.sections:
+            result += section.print_toc()
+        
+        result += TEMPLATE_END
         result += BOX_END
         result += NEW_LINE
 
@@ -383,4 +388,5 @@ class PatchNotes:
         result += PATCH_LIST_NAVBOX
         
         # save to wiki
-        self.site.save_tile(WIKI_PAGE.format(self.patch_version), result, SUMMARY)
+        self.page_url = WIKI_PAGE.format(self.patch_version)
+        self.site.save_tile(self.page_url, result, SUMMARY)
