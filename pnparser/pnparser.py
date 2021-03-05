@@ -3,24 +3,29 @@ from .patch_notes import PatchNotes
 from .templates import Designer
 from .dragon import Dragon
 
-
 from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel
 from redbot.core import commands
-from redbot.core.bot import Red
+import rivercogutils as utils
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from river_mwclient.esports_client import EsportsClient
     from discord.guild import Guild
+    from redbot.core.bot import Red
 
 
 CURRENT_VERSION: str = "0.1.0"
             
 
 class PatchNotesParser(commands.Cog):
-    def __init__(self, bot: Red) -> None:
+    """Parses League of Legends patch notes to Wiki format"""
+
+    def __init__(self, bot: 'Red') -> None:
+        self.bot: 'Red' = bot
         self.patch_notes: 'PatchNotes | None' = None
+        
         guild: 'Guild | None' = bot.get_guild(529775376721903617)
         if guild is not None:
             for channel in guild.text_channels:
@@ -106,16 +111,16 @@ class PatchNotesParser(commands.Cog):
         await ctx.send(f"Designer {designer_name} added successfully.")
 
     @pnparser.group()
-    async def ddragon(self, ctx: GuildContext) -> None:
+    async def dragon(self, ctx: GuildContext) -> None:
         """Commands to get information related to ddragon"""
         pass
 
-    @ddragon.command("version")
-    async def ddragon_version(self, ctx: GuildContext) -> None:
+    @dragon.command("version")
+    async def dragon_version(self, ctx: GuildContext) -> None:
         """Get the current version number"""
         await ctx.send(f"Current version of ddragon is `{Dragon.current_version}`.")
 
-    @ddragon.command()
+    @dragon.command()
     async def update(self, ctx: GuildContext) -> None:
         """Get the latest version from Riot"""
         current_version: 'str | None' = Dragon.current_version
@@ -140,12 +145,11 @@ class PatchNotesParser(commands.Cog):
     @parse.command()
     async def all(self, ctx: GuildContext, patch_version: str) -> None:
         """Parse the entire specified patch notes"""
+        site: 'EsportsClient' = await utils.login_if_possible(ctx, self.bot, 'lol')
+
         try:
             # parse
-            self.patch_notes = PatchNotes().parse_all(patch_version)
-
-            # print
-            await ctx.send(f"```\n{self.patch_notes.print()}\n```")
+            self.patch_notes = PatchNotes(site).parse_all(patch_version)
 
             # parsing complete
             await ctx.send("Patch notes parsed successfully.\n"

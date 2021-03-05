@@ -7,12 +7,18 @@ from datetime import datetime as DateTime
 
 from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
-from typing import Iterator
 import re as Regex
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from river_mwclient.esports_client import EsportsClient
+    from typing import Iterator
 
 
 RIOT_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
-WIKI_ADDRESS: str = "https://lol.gamepedia.com/Patch_{}"
+SUMMARY: str = "Auto-parse League of Legends patch notes."
+WIKI_PAGE: str = "User:Bruno_Blanes/Patch_{}"
 
 
 # known champion ability base attributes
@@ -26,9 +32,10 @@ def ability_base_attributes() -> 'list[str]':
 
 
 class PatchNotes:
-    def __init__(self) -> None:
+    def __init__(self, site: 'EsportsClient') -> None:
         self.context: str = ""
         self.patch_version: str = ""
+        self.site: 'EsportsClient' = site
         self.patch_url: 'str | None' = None
         self.sections: 'list[Section]' = []
         self.published_date = DateTime.now()
@@ -40,7 +47,7 @@ class PatchNotes:
             return True
         return False
 
-    def midpatch(self, border: 'Border | None', section: Section, content_list: Iterator[Tag]) -> None:
+    def midpatch(self, border: 'Border | None', section: Section, content_list: 'Iterator[Tag]') -> None:
         change: 'Pnb | None' = None
         ability: 'Pai | None' = None
 
@@ -257,7 +264,7 @@ class PatchNotes:
                 if section is None:
                     raise ParserError(self, 'HTML node with `class="content-border"` '
                                     'found before the `"header-primary"` was defined.')
-                content_list: Iterator[Tag] = filter(lambda tag:
+                content_list: 'Iterator[Tag]' = filter(lambda tag:
                                                     isinstance(tag, Tag),
                                                     tag.div.div.children)
 
@@ -279,16 +286,29 @@ class PatchNotes:
                         if len(border_context) > 0:
                             border.context = border_context[-1].p.text.strip()
                     section.borders.append(border)
+        
+        # parse and save to wiki
+        self.print()
         return self
         
-    def print(self) -> str:
+    def print(self) -> None:
         # header
         result: str = PATCH_TABS_HEADER
         result += ONLY_INCLUDE
         result += BOX_START
 
         # context
-        # result += 
+        result += f"{{{{pnbh|patch_number={self.patch_version}|date={self.published_date}\n"
+        result += f"|context={self.context}\n"
+        result += THEMATIC_BREAK
+        result += HYPERLINK.format(self.patch_url, "Official Patch Notes Link")
+        result += NEW_LINE
+
+        # print context designers
+        for designer in self.designers:
+            result += designer.print()
+        
+        result += TEMPLATE_END
         result += BOX_BREAK
         result += NEW_LINE
 
@@ -361,4 +381,6 @@ class PatchNotes:
                     result += TEMPLATE_END
             result += NEW_LINE
         result += PATCH_LIST_NAVBOX
-        return result
+        
+        # save to wiki
+        self.site.save_tile(WIKI_PAGE.format(self.patch_version), result, SUMMARY)

@@ -7,6 +7,8 @@
 	"short": "A short description",
 	"install_msg": "HEY THERE! {stores desiger.icon.json}",
 	"requirements": [
-		"bs4"
+		"bs4",
+		"rivercogutils",
+		"river_mwclient"
 	]
 }
