@@ -1,5 +1,5 @@
 from requests import ReadTimeout
-from .parser_errors import ParserError, ParserFormatError, ParserHttpError
+from .parser_errors import ParserError, ParserHttpError
 from .patch_notes import PatchNotes
 from .templates import Designer
 from .dragon import Dragon
@@ -175,10 +175,6 @@ class PatchNotesParser(commands.Cog):
                         f"See at: https://lol.gamepedia.com/{self.patch_notes.page_url}\n\n"
                         "To report issues with the parser use "
                         "`^pnparser report <message>`.")
-        
-        # pretty print an error message to the user
-        except ParserFormatError as e:
-            await ctx.send(e.message)
 
         except ParserHttpError as e:
             pass

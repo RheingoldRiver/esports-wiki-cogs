@@ -1,18 +1,25 @@
+import datetime as DateTime
+from ..dragon import Dragon
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .pbc import Pbc
     from .pai import Pai
 
+TEMPLATE: str = "{{pnb"
 
 class Pnb:
     """A champion or item change"""
+    
     def __init__(self, name: str) -> None:
         self.__name: str = ""
         self.name = name
         self.new: bool = False
+        self.removed: bool = False
         self.context: str = ""
         self.summary: str = ""
+        self.datetime: 'DateTime | None' = None
         self.changes: 'list[Pnb]' = []
         self.attributes: 'list[Pbc]' = []
         self.abilities: 'list[Pai]' = []
@@ -28,4 +35,29 @@ class Pnb:
         self.__name = value.replace("’", "'")
 
     def print(self) -> str:
-        return ""
+        result: str = TEMPLATE
+        
+        if self.new:
+            result += "|ch=new"
+        elif self.removed:
+            result += "|ch=removed"
+        
+        result += "|date=" + (str(self.datetime or ""))
+        
+        if any(x["name"] == self.__name for x in Dragon.champions):
+            result += f"|champion={self.__name}\n"
+        elif any(x["name"] == self.__name for x in Dragon.items):
+            result += f"|item={self.__name}\n"
+        elif any(x["name"] == self.__name for x in Dragon.runes):
+            result += f"|rune={self.__name}\n"
+        elif self.__name and not self.__name.isspace():
+            result += f"|title={self.__name}\n"
+        
+        if self.summary and not self.summary.isspace():
+            result += f"|summary={self.summary}\n"
+        
+        if self.context and not self.context.isspace():
+            result += f"|context={self.context}\n"
+
+        result += "|changes="
+        return result

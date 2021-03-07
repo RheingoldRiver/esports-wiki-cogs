@@ -1,4 +1,5 @@
-from .parser_errors import ParserError, ParserFormatError, ParserHttpError
+from .parser_errors import ParserError, ParserHttpError
+from .helpers import Helper
 from .dragon import Dragon
 from .templates import *
 
@@ -20,7 +21,7 @@ RIOT_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patc
 SUMMARY: str = "Auto-parse League of Legends patch notes."
 WIKI_PAGE: str = "User:Bruno_Blanes/Patch_{}"
 
-
+# TODO: ask for help with this shit
 # known champion ability base attributes
 def ability_base_attributes() -> 'list[str]':
     return ["Cooldown",
@@ -28,7 +29,9 @@ def ability_base_attributes() -> 'list[str]':
             "Damage",
             "Cost",
             "Move Speed",
-            "Second Hit Healing Vs. Minions"]
+            "Second Hit Healing Vs. Minions",
+            "Toggle Abilities Bugfix",
+            "Hecarim Bugfix"]
 
 
 class PatchNotes:
@@ -84,17 +87,18 @@ class PatchNotes:
                                             tag.has_attr("class"),
                                             content.children):
                     if "attribute" in attribute_tag["class"]:
-                        attribute_info: str = attribute_tag.text.strip().title()
+                        attribute_info: str = Helper.capitalize(attribute_tag.text.strip())
 
                         # the current change reffers to a champion
                         if any(x["name"] == change.name for x in Dragon.champions):
 
                             # attribute is from an ability
-                            result = Regex.search(r'([QWER]|(PASSIVE))\s-\s', attribute_info)
+                            result = Regex.search(r"([QWER]|(PASSIVE))\s-\s", attribute_info, Regex.IGNORECASE)
                             if result is not None:
 
                                 # get a substring that contains only the ability name and base attribute
                                 ability_info: str = attribute_info[result.span()[0] + len(result.group(0)):]
+                                print(attribute_info)
                                 ability_name: str = ""
 
                                 # loop through all of the known ability base attributes
@@ -171,12 +175,12 @@ class PatchNotes:
                         raise ParserError(self, "Field 'attribute' was not defined.")
 
                     # handle previous attribute value and "attribute removed" text
-                    elif "attribute-before" or "attribute-removed" in attribute_tag["class"]:
+                    elif any(x in attribute_tag["class"] for x in ["attribute-before", "attribute-removed"]):
                         attribute.before = attribute_tag.text.strip()
 
                     # handle new attribute value
                     elif "attribute-after" in attribute_tag["class"]:
-                        attribute.after = attribute_tag.text.strip().replace("<strong>", "'''").replace("</strong>", "'''")
+                        attribute.after = attribute_tag.text.strip()
 
             # reset values at the end of a change
             elif "divider" in content["class"]:
@@ -184,6 +188,7 @@ class PatchNotes:
                 ability = None
 
     def parse_all(self, patch_version: str) -> 'PatchNotes':
+        self.patch_version = patch_version
         self.patch_url = RIOT_ADDRESS.format(self.patch_version.replace('.', '-'))
         response = HttpClient.get(self.patch_url)
 
@@ -279,10 +284,10 @@ class PatchNotes:
                     section.borders.append(border)
         
         # parse and save to wiki
-        self.print()
+        self.__print()
         return self
         
-    def print(self) -> None:
+    def __print(self) -> None:
         # header
         result: str = PATCH_TABS_HEADER
         result += ONLY_INCLUDE
@@ -333,11 +338,21 @@ class PatchNotes:
                     result += "{{PatchSplashTable|br=2\n"
 
                     if section.borders.index(border) == len(section.borders) - 1:
-                        pass
+                        for i, skin in border.skins:
+                            result += f'|s{i + 1}=<div style="border:1px solid #BBB; padding:.33em"">'
+                            # TODO: save files to wiki
+                            result += f"[[File:.jpg|350px]]</div>'''{skin.title}'''"
+                        
+                        result += TEMPLATE_END
+                        result += CLOSE_DIV
 
                     else:
-                        pass
-                result += CLOSE_DIV
+                        for i, skin in border.skins:
+                            result += f"|s{i + 1}={{{{SplashTableEntry|{skin.title}}}}}"
+
+                        result += TEMPLATE_END
+                        result += LINE_BREAK
+                        result += NEW_LINE
                 continue
             
             for border in section.borders:

@@ -15,8 +15,3 @@ class ParserHttpError(ParserError):
     """Common class for parser HTTP errors"""
     def __init__(self, patch_notes: 'PatchNotes', message: str) -> None:
         super().__init__(patch_notes, message)
-
-class ParserFormatError(ParserError):
-    """Patch number format not allowed"""
-    def __init__(self, patch_notes: 'PatchNotes', message) -> None:
-        super().__init__(patch_notes, message)
