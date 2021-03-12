@@ -7,33 +7,14 @@ if TYPE_CHECKING:
     from typing import Any, Iterator
 
 
-EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in"]
-UPPER_WORDS: 'list[str]' = ["aram"]
+EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "QoL"]
 
 class Helper:
     @staticmethod
     def capitalize(text: str) -> str:
-        lower_case_words: 'list[str]' = Regex.split(" ", text.lower())
-        final_words: 'list[str]' = [word if word in EXCEPTIONS else Helper.__change_state(word) for word in lower_case_words]
-        return " ".join(final_words)
-
-    @staticmethod
-    def __change_state(word: str) -> str:
-        index: int = -1
-        
-        if '"' in word:
-            index = word.index('"')
-            word = word.replace('"', "")
-
-        if word in UPPER_WORDS:
-            word = word.upper()
-        else:
-            word = word.capitalize()
-
-        if not index == -1:
-            return word[:index] + '"' + word[index:]
-        else:
-            return word
+        words: 'list[str]' = Regex.split("( |-|\"|/)", text)
+        final_words: 'list[str]' = [word if word in EXCEPTIONS else word.lower().capitalize() for word in words]
+        return "".join(final_words)
 
 
 class Filters:
