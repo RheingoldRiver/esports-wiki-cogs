@@ -155,7 +155,7 @@ class PatchNotes:
         self.page_url = WIKI_PAGE.format(self.patch_version)
         self.site.save_tile(self.page_url, result, SUMMARY)
 
-    def __aram(self, border: 'Border | None', section: Section, content_list: 'Iterator[Tag]') -> None:
+    def __aram(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
         # loop through all the changes
         for content_info in content_list:
 
@@ -173,7 +173,7 @@ class PatchNotes:
                 border.attributes.append(attribute)
 
                 # loop through all the properties of the current attribute
-                for attribute_info in Filters.tags(content_info.children):
+                for attribute_info in Filters.tags(list(content_info.children)):
                     
                     # sets the name of the attribute
                     if "attribute" in attribute_info["class"]:
@@ -187,7 +187,7 @@ class PatchNotes:
                     elif "attribute-after" in attribute_info["class"]:
                         attribute.after = attribute_info.text.strip()
 
-    def midpatch(self, border: 'Border | None', section: Section, content_list: 'Iterator[Tag]') -> None:
+    def midpatch(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
         change: 'Pnb | None' = None
         ability: 'Pai | None' = None
 
@@ -240,7 +240,6 @@ class PatchNotes:
 
                                 # get a substring that contains only the ability name and base attribute
                                 ability_info: str = attribute_info[result.span()[0] + len(result.group(0)):]
-                                print(attribute_info)
                                 ability_name: str = ""
 
                                 # loop through all of the known ability base attributes
@@ -402,9 +401,9 @@ class PatchNotes:
                 if section is None:
                     raise ParserError(self, 'HTML node with `class="content-border"` '
                                     'found before the `"header-primary"` was defined.')
-                content_list: 'Iterator[Tag]' = filter(lambda tag:
+                content_list: 'list[Tag]' = list(filter(lambda tag:
                                                         isinstance(tag, Tag),
-                                                        tag.div.div.children)
+                                                        tag.div.div.children))
 
                 # handles mid-patch updates
                 if section.title == "Mid-Patch Updates":
@@ -430,7 +429,7 @@ class PatchNotes:
                     # self.__changes(border, section, content_list)
                     pass
 
-                #handles ARAM changes
+                # handles ARAM changes
                 elif section.title == "ARAM Balance Changes":
                     self.__aram(border, section, content_list)
 
@@ -438,9 +437,8 @@ class PatchNotes:
                 elif section.title == "Upcoming Skins & Chromas":
                     border = Border()
                     section.borders.append(border)
-                    border_context = list(filter(lambda tag:
-                                                tag["class"] == "summary",
-                                                content_list))
+                    border_context = list(Filters.tags_by_class("summary", content_list))
+
                     if len(border_context) > 0:
                         border.context = border_context[0].text.strip()
 
@@ -451,33 +449,34 @@ class PatchNotes:
                         # loop through all the skins inside the container
                         for skin in skins:
                             if skin["class"] == "skin-box":
-                                skin_title: str = next(Filters.tags_by_class("skin-title", skin.children)).text.strip()
-                                continue
-                                border.skins.append(SplashTableEntry(skin_title))
+                                skin_title: str = next(Filters.tags_by_class("skin-title", list(skin.children))).text.strip()
+                                # border.skins.append(SplashTableEntry(skin_title))
 
                 else:
                     border = Border(simplified=True)
                     section.borders.append(border)
-                    border_context = list(Filters.tags_by_class("summary", content_list))
+
+                    # adds the context to the border
+                    border_context = list(Filters.tags_by_class("context", content_list))
                     if len(border_context) > 0:
-                        border.context = border_context[0].text.strip()
+                        border.context = f"{border_context[0].text.strip()}\n"
 
                     # handles lists inside the block
                     for items_list in Filters.tags_by_name("ul", content_list):
-                        if len(items_list) > 0:                        
-                            # appends the items from the list to the context
-                            for item in Filters.tags_by_name("li", content_list):
-                                text: str = item.text.replace("<strong>", "'''").replace("</strong>", "'''").strip()
-                                border.context += f"{text}\n"
+                        # TODO: fix <strong> not being captured
+                        # appends the items from the list to the context
+                        for item in Filters.tags_by_name("li", list(items_list.children)):
+                            text: str = item.text.strip().replace("<strong>", "'''").replace("</strong>", "'''")
+                            border.context += f"*{text}\n"
 
                     # handles attribute changes
-                    for content_info in content_list:
-                        if content_info["class"] == "attribute-change":
+                    for content_info in Filters.tags_with_classes(content_list):
+                        if "attribute-change" in content_info["class"]:
                             attribute: Pbc = Pbc()
                             border.attributes.append(attribute)
 
                             # loop through the properties of the current attribute
-                            attributes: 'Iterator[Tag]' = Filters.tags(content_info.children)
+                            attributes: 'Iterator[Tag]' = Filters.tags(list(content_info.children))
                             for attribute_info in attributes:
                     
                                 # sets the name of the attribute

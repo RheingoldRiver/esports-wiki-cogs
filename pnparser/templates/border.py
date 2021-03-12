@@ -28,6 +28,8 @@ class Border:
             result += SUBTITLE.format(self.title)
         
         if self.simplified:
+            # TODO: think of a better way to check for this
+            # don't want to keep section title here
             if section.title == "ARAM Balance Changes" or section.title == "Mid-Patch Updates":
                 if section.borders.index(self) == 0:
                     result += TEMPLATE.format(self.context)

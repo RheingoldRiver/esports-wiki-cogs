@@ -19,14 +19,17 @@ class Helper:
 
 class Filters:
     @staticmethod
-    def tags(array: 'Iterator[Any]') -> 'Iterator[Tag]':
+    def tags(array: 'list[Any]') -> 'Iterator[Tag]':
         return filter(lambda tag: isinstance(tag, Tag), array)
 
     @staticmethod
-    def tags_by_name(tag_name: str, array: 'Iterator[Tag]') -> 'Iterator[Tag]':
+    def tags_with_classes(array: 'list[Tag]') -> 'Iterator[Tag]':
+        return filter(lambda tag: tag.has_attr("class"), array)
+
+    @staticmethod
+    def tags_by_name(tag_name: str, array: 'list[Tag]') -> 'Iterator[Tag]':
         return filter(lambda tag: tag.name == tag_name, array)
 
     @staticmethod
-    def tags_by_class(class_name: str, array: 'Iterator[Tag]') -> 'Iterator[Tag]':
-        tags: 'Iterator[Tag]' = filter(lambda tag: tag.has_attr("class"), Filters.tags(array))
-        return filter(lambda tag: class_name in tag["class"], tags)
+    def tags_by_class(class_name: str, array: 'list[Tag]') -> 'Iterator[Tag]':
+        return filter(lambda tag: class_name in tag["class"], Filters.tags_with_classes(array))
