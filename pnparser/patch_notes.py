@@ -1,4 +1,4 @@
-from .parser_errors import ParserError, ParserHttpError
+from .exceptions import ParserError, ParserHttpError
 from .helpers import Helper
 from .dragon import Dragon
 from .templates import *
@@ -282,7 +282,84 @@ class PatchNotes:
                         if len(border_context) > 0:
                             border.context = border_context[-1].p.text.strip()
                     section.borders.append(border)
-        
+
+                # handles champion, item and rune changes
+                elif section.title == "Champions" or section.title == "Items" or section.title == "Runes":
+                    self.__changes(border, section, content_list)
+
+                #handles ARAM changes
+                elif section.title == "ARAM Balance Changes":
+                    self.__aram(border, section, content_list)
+
+                # handles future skins and chromas
+                elif section.title == "Upcoming Skins & Chromas":
+                    border = Border()
+                    section.borders.append(border)
+                    border_context = list(filter(lambda tag:
+                                                tag["class"] == "summary",
+                                                content_list))
+                    if len(border_context) > 0:
+                        border.context = border_context[0].text.strip()
+
+                    # loop through all the skin containers
+                    for skin_container in filter(lambda tag: tag["class"] == "gs-container", content_list):
+                        skins: 'list[Tag]' = list(skin_container.children)
+
+                        # loop through all the skins inside the container
+                        for skin in skins:
+                            if skin["class"] == "skin-box":
+                                skin_title: str = list(filter(lambda tag:
+                                                             tag["class"] == "skin-title",
+                                                             skin.children))[0].text.strip()
+                                border.skins.append(SplashTableEntry(skin_title))
+
+                else:
+                    border = Border(simplified=True)
+                    section.borders.append(border)
+                    border_context = list(filter(lambda tag:
+                                                tag["class"] == "summary",
+                                                content_list))
+                    if len(border_context) > 0:
+                        border.context = border_context[0].text.strip()
+
+                    # handles list inside the block
+                    items_list: 'list[Tag] | None' = list(filter(lambda tag:
+                                                                tag.name == "ul",
+                                                                content_list))
+                    if len(items_list) > 0:
+                        items: 'list[Tag] | None' = list(filter(lambda tag:
+                                                                tag.name == "li",
+                                                                items_list[0].children))
+                        
+                        # appends the items from the list to the context
+                        for item in items:
+                            text: str = item.text.replace("<strong>", "'''").replace("</strong>", "'''").strip()
+                            border.context += f"{text}\n"
+
+                        # handles attribute changes
+                        for content_info in content_list:
+                            if content_info["class"] == "attribute-change":
+                                attribute: Pbc = Pbc()
+                                border.attributes.append(attribute)
+
+                                # loop through the properties of the current attribute
+                                attributes: 'Iterator[Tag] | None' = filter(lambda tag:
+                                                                            isinstance(tag, Tag),
+                                                                            content_info.children)
+                                for attribute_info in attributes:
+
+                                    # sets the name of the attribute
+                                    if attribute_info["class"] == "attribute":
+                                        attribute.name = attribute_info.text.strip()
+
+                                    # handles previous attribute value
+                                    elif attribute_info["class"] == "attribute-before":
+                                        attribute.before = attribute_info.text.strip()
+
+                                    # handles new attribute value
+                                    elif attribute_info["class"] == "attribute-after":
+                                        attribute.after = attribute_info.text.strip()
+
         # parse and save to wiki
         self.__print()
         return self
