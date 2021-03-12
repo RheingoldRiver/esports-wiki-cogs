@@ -1,5 +1,5 @@
 from .exceptions import ParserError, ParserHttpError
-from .helpers import Helper
+from .helpers import Helper, Filters
 from .dragon import Dragon
 from .templates import *
 
@@ -44,6 +44,148 @@ class PatchNotes:
         self.sections: 'list[Section]' = []
         self.published_date = DateTime.now()
         self.designers: 'list[Designer]' = []
+        
+    def __print(self) -> None:
+        # header
+        result: str = PATCH_TABS_HEADER
+        result += ONLY_INCLUDE
+        result += BOX_START
+
+        # context
+        result += f"{{{{pnbh|patch_number={self.patch_version}|date={self.published_date}\n"
+        result += f"|context={self.context}\n"
+        result += THEMATIC_BREAK
+        result += HYPERLINK.format(self.patch_url, "Official Patch Notes Link")
+        result += NEW_LINE
+
+        # print context designers
+        for designer in self.designers:
+            result += designer.print()
+        
+        result += TEMPLATE_END
+        result += BOX_BREAK
+        result += NEW_LINE
+
+        # tables of content
+        result += "{{PatchNotesTOC"
+        for section in self.sections:
+            result += section.print_toc()
+        
+        result += TEMPLATE_END
+        result += BOX_END
+        result += NEW_LINE
+
+        # patch notes
+        for section in self.sections:
+            result += section.print()
+
+            if section.title == "Patch Highlights":
+                result += OPEN_BORDER_DIV
+                result += '<div style="border:1px solid #BBB; padding:.33em">\n'
+                result += PATCH_HIGHLIGHTS.format(self.patch_version)
+                result += CLOSE_DIV + CLOSE_DIV
+                result += NEW_LINE
+                continue
+
+            elif section.title == "Upcoming Skins & Chromas":
+                result += OPEN_BORDER_DIV
+
+                for border in section.borders:
+                    result += f"''<span style=\"color:#555\">{border.context}</span>''\n"
+                    result += LINE_BREAK
+                    result += "{{PatchSplashTable|br=2\n"
+
+                    if section.borders.index(border) == len(section.borders) - 1:
+                        for i, skin in border.skins:
+                            result += f'|s{i + 1}=<div style="border:1px solid #BBB; padding:.33em"">'
+                            # TODO: save files to wiki
+                            result += f"[[File:.jpg|350px]]</div>'''{skin.title}'''"
+                        
+                        result += TEMPLATE_END
+                        result += CLOSE_DIV
+
+                    else:
+                        for i, skin in border.skins:
+                            result += f"|s{i + 1}={{{{SplashTableEntry|{skin.title}}}}}"
+
+                        result += TEMPLATE_END
+                        result += LINE_BREAK
+                        result += NEW_LINE
+                continue
+            
+            for border in section.borders:
+                context: str = border.print(section)
+
+                if context and not context.isspace():
+                    result += context
+                
+                for change in border.changes:
+                    result += change.print()
+
+                    for attribute in change.attributes:
+                        result += attribute.print()
+                    
+                    if any(x["name"] == change.name for x in Dragon.champions):
+                        for ability in change.abilities:
+                            result += ability.print()
+
+                            for attribute in ability.attributes:
+                                result += attribute.print()
+                        
+                        if result[:1] == "=":
+                            result = result[:9]
+                    else:
+                        for inner_change in change.changes:
+                            if any(x["name"] == change.name for x in Dragon.champions):
+                                if result[:1] == "=":
+                                    result = result[:9]
+
+                                result += CI.format(inner_change.name)
+                                for ability in inner_change.abilities:
+                                    result += ability.print()
+                            else:
+                                result += ANCHOR.format(inner_change)
+                                for attribute in inner_change.attributes:
+                                    result += attribute.print()
+                    result += TEMPLATE_END
+            result += NEW_LINE
+        result += PATCH_LIST_NAVBOX
+        
+        # save to wiki
+        self.page_url = WIKI_PAGE.format(self.patch_version)
+        self.site.save_tile(self.page_url, result, SUMMARY)
+
+    def __aram(self, border: 'Border | None', section: Section, content_list: 'Iterator[Tag]') -> None:
+        # loop through all the changes
+        for content_info in content_list:
+
+            # set the header, usually nerfs and buffs
+            if "ability-title" in content_info["class"] or content_info.name == "h3":
+                border = Border(context=content_info.text.strip(), simplified=True)
+                section.borders.append(border)
+
+            # handle the changes
+            elif "attribute-change" in content_info["class"]:
+                if border is None:
+                    raise ParserError(self, "Field \"border\" was not defined.")
+                
+                attribute: Pbc = Pbc()
+                border.attributes.append(attribute)
+
+                # loop through all the properties of the current attribute
+                for attribute_info in Filters.tags(content_info.children):
+                    
+                    # sets the name of the attribute
+                    if "attribute" in attribute_info["class"]:
+                        attribute.name = attribute_info.text.strip()
+                    
+                    # handle previous attribute value
+                    elif "attribute-before" in attribute_info["class"]:
+                        attribute.before = attribute_info.text.strip()
+                    
+                    # handle new attribute value
+                    elif "attribute-after" in attribute_info["class"]:
+                        attribute.after = attribute_info.text.strip()
 
     def midpatch(self, border: 'Border | None', section: Section, content_list: 'Iterator[Tag]') -> None:
         change: 'Pnb | None' = None
@@ -221,7 +363,7 @@ class PatchNotes:
         # patch notes designers
         designer_elements: 'list[Tag]' = soup.find_all("span", {"class": "context-designer"})
         for designer_span in designer_elements:
-            designer = Designer(designer_span.text.strip().title())
+            designer = Designer(Helper.capitalize(designer_span.text.strip()))
             if designer.username is None:
                 raise ParserError(self, f"Could not extract username from `context-designer`.")
             if designer.icon is None:
@@ -250,7 +392,7 @@ class PatchNotes:
         for tag in container:            
             # section headers
             if "header-primary" in tag["class"]:
-                section = Section(section_id, tag.text.strip().title())
+                section = Section(section_id, Helper.capitalize(tag.text.strip()))
                 self.sections.append(section)
                 section_id += 1
                 border = None
@@ -261,8 +403,8 @@ class PatchNotes:
                     raise ParserError(self, 'HTML node with `class="content-border"` '
                                     'found before the `"header-primary"` was defined.')
                 content_list: 'Iterator[Tag]' = filter(lambda tag:
-                                                    isinstance(tag, Tag),
-                                                    tag.div.div.children)
+                                                        isinstance(tag, Tag),
+                                                        tag.div.div.children)
 
                 # handles mid-patch updates
                 if section.title == "Mid-Patch Updates":
@@ -285,7 +427,8 @@ class PatchNotes:
 
                 # handles champion, item and rune changes
                 elif section.title == "Champions" or section.title == "Items" or section.title == "Runes":
-                    self.__changes(border, section, content_list)
+                    # self.__changes(border, section, content_list)
+                    pass
 
                 #handles ARAM changes
                 elif section.title == "ARAM Balance Changes":
@@ -308,168 +451,47 @@ class PatchNotes:
                         # loop through all the skins inside the container
                         for skin in skins:
                             if skin["class"] == "skin-box":
-                                skin_title: str = list(filter(lambda tag:
-                                                             tag["class"] == "skin-title",
-                                                             skin.children))[0].text.strip()
+                                skin_title: str = next(Filters.tags_by_class("skin-title", skin.children)).text.strip()
+                                continue
                                 border.skins.append(SplashTableEntry(skin_title))
 
                 else:
                     border = Border(simplified=True)
                     section.borders.append(border)
-                    border_context = list(filter(lambda tag:
-                                                tag["class"] == "summary",
-                                                content_list))
+                    border_context = list(Filters.tags_by_class("summary", content_list))
                     if len(border_context) > 0:
                         border.context = border_context[0].text.strip()
 
-                    # handles list inside the block
-                    items_list: 'list[Tag] | None' = list(filter(lambda tag:
-                                                                tag.name == "ul",
-                                                                content_list))
-                    if len(items_list) > 0:
-                        items: 'list[Tag] | None' = list(filter(lambda tag:
-                                                                tag.name == "li",
-                                                                items_list[0].children))
-                        
-                        # appends the items from the list to the context
-                        for item in items:
-                            text: str = item.text.replace("<strong>", "'''").replace("</strong>", "'''").strip()
-                            border.context += f"{text}\n"
+                    # handles lists inside the block
+                    for items_list in Filters.tags_by_name("ul", content_list):
+                        if len(items_list) > 0:                        
+                            # appends the items from the list to the context
+                            for item in Filters.tags_by_name("li", content_list):
+                                text: str = item.text.replace("<strong>", "'''").replace("</strong>", "'''").strip()
+                                border.context += f"{text}\n"
 
-                        # handles attribute changes
-                        for content_info in content_list:
-                            if content_info["class"] == "attribute-change":
-                                attribute: Pbc = Pbc()
-                                border.attributes.append(attribute)
+                    # handles attribute changes
+                    for content_info in content_list:
+                        if content_info["class"] == "attribute-change":
+                            attribute: Pbc = Pbc()
+                            border.attributes.append(attribute)
 
-                                # loop through the properties of the current attribute
-                                attributes: 'Iterator[Tag] | None' = filter(lambda tag:
-                                                                            isinstance(tag, Tag),
-                                                                            content_info.children)
-                                for attribute_info in attributes:
-
-                                    # sets the name of the attribute
-                                    if attribute_info["class"] == "attribute":
-                                        attribute.name = attribute_info.text.strip()
-
-                                    # handles previous attribute value
-                                    elif attribute_info["class"] == "attribute-before":
-                                        attribute.before = attribute_info.text.strip()
-
-                                    # handles new attribute value
-                                    elif attribute_info["class"] == "attribute-after":
-                                        attribute.after = attribute_info.text.strip()
+                            # loop through the properties of the current attribute
+                            attributes: 'Iterator[Tag]' = Filters.tags(content_info.children)
+                            for attribute_info in attributes:
+                    
+                                # sets the name of the attribute
+                                if "attribute" in attribute_info["class"]:
+                                    attribute.name = attribute_info.text.strip()
+                                
+                                # handle previous attribute value
+                                elif "attribute-before" in attribute_info["class"]:
+                                    attribute.before = attribute_info.text.strip()
+                                
+                                # handle new attribute value
+                                elif "attribute-after" in attribute_info["class"]:
+                                    attribute.after = attribute_info.text.strip()
 
         # parse and save to wiki
         self.__print()
         return self
-        
-    def __print(self) -> None:
-        # header
-        result: str = PATCH_TABS_HEADER
-        result += ONLY_INCLUDE
-        result += BOX_START
-
-        # context
-        result += f"{{{{pnbh|patch_number={self.patch_version}|date={self.published_date}\n"
-        result += f"|context={self.context}\n"
-        result += THEMATIC_BREAK
-        result += HYPERLINK.format(self.patch_url, "Official Patch Notes Link")
-        result += NEW_LINE
-
-        # print context designers
-        for designer in self.designers:
-            result += designer.print()
-        
-        result += TEMPLATE_END
-        result += BOX_BREAK
-        result += NEW_LINE
-
-        # tables of content
-        result += "{{PatchNotesTOC"
-        for section in self.sections:
-            result += section.print_toc()
-        
-        result += TEMPLATE_END
-        result += BOX_END
-        result += NEW_LINE
-
-        # patch notes
-        for section in self.sections:
-            result += section.print()
-
-            if section.title == "Patch Highlights":
-                result += OPEN_BORDER_DIV
-                result += '<div style="border:1px solid #BBB; padding:.33em">\n'
-                result += PATCH_HIGHLIGHTS.format(self.patch_version)
-                result += CLOSE_DIV + CLOSE_DIV
-                result += NEW_LINE
-                continue
-
-            elif section.title == "Upcoming Skins & Chromas":
-                result += OPEN_BORDER_DIV
-
-                for border in section.borders:
-                    result += f"''<span style=\"color:#555\">{border.context}</span>''\n"
-                    result += LINE_BREAK
-                    result += "{{PatchSplashTable|br=2\n"
-
-                    if section.borders.index(border) == len(section.borders) - 1:
-                        for i, skin in border.skins:
-                            result += f'|s{i + 1}=<div style="border:1px solid #BBB; padding:.33em"">'
-                            # TODO: save files to wiki
-                            result += f"[[File:.jpg|350px]]</div>'''{skin.title}'''"
-                        
-                        result += TEMPLATE_END
-                        result += CLOSE_DIV
-
-                    else:
-                        for i, skin in border.skins:
-                            result += f"|s{i + 1}={{{{SplashTableEntry|{skin.title}}}}}"
-
-                        result += TEMPLATE_END
-                        result += LINE_BREAK
-                        result += NEW_LINE
-                continue
-            
-            for border in section.borders:
-                context: str = border.print(section)
-
-                if context and not context.isspace():
-                    result += context
-                
-                for change in border.changes:
-                    result += change.print()
-
-                    for attribute in change.attributes:
-                        result += attribute.print()
-                    
-                    if any(x["name"] == change.name for x in Dragon.champions):
-                        for ability in change.abilities:
-                            result += ability.print()
-
-                            for attribute in ability.attributes:
-                                result += attribute.print()
-                        
-                        if result[:1] == "=":
-                            result = result[:9]
-                    else:
-                        for inner_change in change.changes:
-                            if any(x["name"] == change.name for x in Dragon.champions):
-                                if result[:1] == "=":
-                                    result = result[:9]
-
-                                result += CI.format(inner_change.name)
-                                for ability in inner_change.abilities:
-                                    result += ability.print()
-                            else:
-                                result += ANCHOR.format(inner_change)
-                                for attribute in inner_change.attributes:
-                                    result += attribute.print()
-                    result += TEMPLATE_END
-            result += NEW_LINE
-        result += PATCH_LIST_NAVBOX
-        
-        # save to wiki
-        self.page_url = WIKI_PAGE.format(self.patch_version)
-        self.site.save_tile(self.page_url, result, SUMMARY)
