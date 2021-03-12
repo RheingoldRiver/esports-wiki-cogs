@@ -1,5 +1,4 @@
-from requests import ReadTimeout
-from .parser_errors import ParserError, ParserHttpError
+from .exceptions import ParserError, ParserHttpError
 from .patch_notes import PatchNotes
 from .templates import Designer
 from .dragon import Dragon
@@ -7,7 +6,9 @@ from .dragon import Dragon
 from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel
 from redbot.core import commands
-import rivercogutils as utils
+
+import rivercogutils as RiverCogUtils
+from requests import ReadTimeout
 import re as Regex
 
 from typing import TYPE_CHECKING
@@ -163,7 +164,7 @@ class PatchNotesParser(commands.Cog):
             await ctx.send("Incorrect patch notes version number format.")
             return
         
-        site: 'EsportsClient' = await utils.login_if_possible(ctx, self.bot, 'lol')
+        site: 'EsportsClient' = await RiverCogUtils.login_if_possible(ctx, self.bot, 'lol')
 
         try:
             # parse
