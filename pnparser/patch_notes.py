@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from river_mwclient.esports_client import EsportsClient
     from typing import Iterator
 
+# TODO: create statistics tab
 
 RIOT_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 SUMMARY: str = "Auto-parse League of Legends patch notes."
@@ -132,19 +133,20 @@ class PatchNotes:
                             for attribute in ability.attributes:
                                 result += attribute.print()
                         
-                        if result[:1] == "=":
-                            result = result[:9]
+                        if result[-1] == "=":
+                            result = result[:-9]
                     else:
                         for inner_change in change.changes:
-                            if any(x["name"] == change.name for x in Dragon.champions):
-                                if result[:1] == "=":
-                                    result = result[:9]
+                            if any(x["name"] == inner_change.name for x in Dragon.champions):
+
+                                if result[-1] == "=":
+                                    result = result[:-9]
 
                                 result += CI.format(inner_change.name)
                                 for ability in inner_change.abilities:
                                     result += ability.print()
                             else:
-                                result += ANCHOR.format(inner_change)
+                                result += ANCHOR.format(inner_change.name)
                                 for attribute in inner_change.attributes:
                                     result += attribute.print()
                     result += TEMPLATE_END
@@ -186,6 +188,129 @@ class PatchNotes:
                     # handle new attribute value
                     elif "attribute-after" in attribute_info["class"]:
                         attribute.after = attribute_info.text.strip()
+
+    def __changes(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
+        ability: 'Pai | None' = None
+        inner_change: 'Pnb | None' = None
+        new: bool = any("new" in x["class"] for x in Filters.tags_with_classes(content_list))
+        removed: bool = any("removed" in x["class"] for x in Filters.tags_with_classes(content_list))
+        change: Pnb = Pnb(new=new, removed=removed, date=self.published_date)
+
+        # loop through all the patch changes
+        for content in Filters.tags(content_list):
+
+            # sets the change title
+            if content.has_attr("class") and "change-title" in content["class"]:
+                change.name = content.text.strip()
+
+            # sets the change summary
+            elif content.has_attr("class") and "summary" in content["class"]:
+                change.summary = content.text.strip()
+
+            # sets the change context
+            elif content.has_attr("class") and "context" in content["class"]:
+                change.context = content.text.strip()
+
+            # handle aditional context links
+            elif content.name == "ul":
+                
+                # loop through all the list items found
+                for item in Filters.tags_by_name("li", list(content.children)):
+
+                    # format the link into the context and escape the vertical bar
+                    for link in Filters.tags_by_name("a", list(item.children)):
+                        address: str = link["href"].strip()
+                        description: str = link.text.strip().replace("|", "{{!}}")
+                        change.context += f"\n*[{address} {description}]"
+
+            # handles attributes
+            # attribute is from a champion ability
+            elif content.has_attr("class") and "ability-title" in content["class"]:
+                ability_info: str = content.text.strip()
+
+                if any(x["name"] == change.name for x in Dragon.champions):
+                    
+                    # gets a substring that contains only the ability name
+                    result = Helper.try_match_ability_name(ability_info)
+                    if result is None:
+                        raise ParserError(self, f"Was not expecting ability name '{ability_info}'.")
+                    
+                    ability = Pai(ability_info[result.span()[0] + len(result.group(0)):])
+                    change.abilities.append(ability)
+
+                else:
+                    inner_change = Pnb(ability_info)
+                    change.changes.append(inner_change)
+
+            # handle base stats attributes
+            elif content.has_attr("class") and ability is None and "change-detail-title" in content["class"]:
+                ability = Pai(content.text.strip())
+                change.abilities.append(ability)
+
+            # handles attribute changes
+            elif content.has_attr("class") and "attribute-change" in content["class"]:
+                attribute: 'Pbc | None' = None
+                
+                # loop through all the attributes that changed
+                for attribute_info in Filters.tags_with_classes(list(content.children)):
+                    if "attribute" in attribute_info["class"]:
+                        attribute = Pbc(attribute_info.text.strip())
+
+                        # gets the attribute status
+                        for tag in Filters.tags_with_classes(list(attribute_info.children)):
+                            if "new" in tag["class"]:
+                                attribute.status = "new"
+                                break
+                            elif "removed" in tag["class"]:
+                                attribute.status = "removed"
+                                break
+                            elif "updated" in tag["class"]:
+                                attribute.status = "updated"
+                                break
+
+                    # handles previous attribute value and attribute removed text
+                    elif "attribute-before" in attribute_info["class"]\
+                        or "attribute-removed" in attribute_info["class"]:
+                        if attribute is None:
+                            raise ParserError(self, "Field 'attribute' was not defined.")
+                        attribute.before = attribute_info.text.strip()
+
+                    # handles new attribute value
+                    elif "attribute-after" in attribute_info["class"]:
+                        if attribute is None:
+                            raise ParserError(self, "Field 'attribute' was not defined.")
+                        attribute.after = attribute_info.text.strip()
+
+                    # when champion updates are nested into other changes
+                    elif "ability-title" in attribute_info["class"]:
+                        ability_info: str = attribute_info.text.strip()
+
+                        # gets a substring that contains only the ability name
+                        result = Helper.try_match_ability_name(ability_info)
+                        if result is not None:
+                            inner_ability = Pai(ability_info[result.span()[0] + len(result.group(0)):])
+
+                            if inner_change is not None:
+                                inner_change.abilities.append(inner_ability)
+                            else:
+                                raise ParserError(self, "Field 'inner_change' was not defined.")
+            
+                # attribute is from an ability
+                if ability is not None and attribute is not None:
+                    ability.attributes.append(attribute)
+
+                # attribute is from some inner change
+                elif inner_change is not None and attribute is not None:
+                    inner_change.attributes.append(attribute)
+
+                # attribute is from a champion
+                elif attribute is not None:
+                    change.attributes.append(attribute)
+
+        # for these, the border is empty
+        border = Border()
+        border.changes.append(change)
+        section.borders.append(border)
 
     def midpatch(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
         change: 'Pnb | None' = None
@@ -235,7 +360,7 @@ class PatchNotes:
                         if any(x["name"] == change.name for x in Dragon.champions):
 
                             # attribute is from an ability
-                            result = Regex.search(r"([QWER]|(PASSIVE))\s-\s", attribute_info, Regex.IGNORECASE)
+                            result = Helper.try_match_ability_name(attribute_info)
                             if result is not None:
 
                                 # get a substring that contains only the ability name and base attribute
@@ -426,7 +551,7 @@ class PatchNotes:
 
                 # handles champion, item and rune changes
                 elif section.title == "Champions" or section.title == "Items" or section.title == "Runes":
-                    # self.__changes(border, section, content_list)
+                    self.__changes(border, section, content_list)
                     pass
 
                 # handles ARAM changes

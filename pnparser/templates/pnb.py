@@ -1,4 +1,4 @@
-import datetime as DateTime
+from datetime import date as Date
 from ..dragon import Dragon
 
 from typing import TYPE_CHECKING
@@ -12,14 +12,17 @@ TEMPLATE: str = "{{pnb"
 class Pnb:
     """A champion or item change"""
     
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str = "",
+                 new: bool = False,
+                 removed: bool = False,
+                 date: 'Date | None' = None) -> None:
         self.__name: str = ""
         self.name = name
-        self.new: bool = False
-        self.removed: bool = False
+        self.new: bool = new
+        self.removed: bool = removed
         self.context: str = ""
         self.summary: str = ""
-        self.datetime: 'DateTime | None' = None
+        self.date: 'Date | None' = date
         self.changes: 'list[Pnb]' = []
         self.attributes: 'list[Pbc]' = []
         self.abilities: 'list[Pai]' = []
@@ -42,7 +45,7 @@ class Pnb:
         elif self.removed:
             result += "|ch=removed"
         
-        result += "|date=" + (str(self.datetime or ""))
+        result += "|date=" + (str(self.date or ""))
         
         if any(x["name"] == self.__name for x in Dragon.champions):
             result += f"|champion={self.__name}\n"
