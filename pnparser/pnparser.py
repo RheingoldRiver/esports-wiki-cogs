@@ -1,4 +1,4 @@
-from .exceptions import ParserError, ParserHttpError
+from .exceptions import ParserError, ParserHttpError, ParserTimeoutError
 from .patch_notes import PatchNotes
 from .templates import Designer
 from .dragon import Dragon
@@ -184,5 +184,6 @@ class PatchNotesParser(commands.Cog):
         except ParserError as e:
             await self.__auto_report(ctx, e.message, e.patch_notes)
 
-        except ReadTimeout:
-            await ctx.send("Whoops, the site is taking too long to respond, try again later.")
+        except ParserTimeoutError as e:
+            self.patch_notes = e.patch_notes
+            await ctx.send(e.message)

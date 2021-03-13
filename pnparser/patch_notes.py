@@ -1,4 +1,4 @@
-from .exceptions import ParserError, ParserHttpError
+from .exceptions import ParserError, ParserHttpError, ParserTimeoutError
 from .helpers import Helper, Filters
 from .dragon import Dragon
 from .templates import *
@@ -82,9 +82,9 @@ class PatchNotes:
 
             if section.title == "Patch Highlights":
                 result += OPEN_BORDER_DIV
-                result += '<div style="border:1px solid #BBB; padding:.33em">\n'
-                result += PATCH_HIGHLIGHTS.format(self.patch_version)
-                result += CLOSE_DIV + CLOSE_DIV
+                result += '<div style="border:1px solid #BBB;padding:.33em">'
+                result += PATCH_HIGHLIGHTS.format(self.patch_version) + CLOSE_DIV
+                result += section.borders[0].context + NEW_LINE + CLOSE_DIV
                 result += NEW_LINE
                 continue
 
@@ -616,6 +616,9 @@ class PatchNotes:
                                 elif "attribute-after" in attribute_info["class"]:
                                     attribute.after = attribute_info.text.strip()
 
-        # parse and save to wiki
-        self.__print()
-        return self
+        try:
+            # parse and save to wiki
+            self.__print()
+            return self
+        except HttpClient.ReadTimeout:
+            raise ParserTimeoutError(self, "Whoops, the site is taking too long to respond, try again later.")

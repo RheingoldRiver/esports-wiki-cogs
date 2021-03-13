@@ -15,3 +15,8 @@ class ParserHttpError(ParserError):
     """Common class for parser HTTP errors"""
     def __init__(self, patch_notes: 'PatchNotes', message: str) -> None:
         super().__init__(patch_notes, message)
+
+class ParserTimeoutError(ParserError):
+    """Client connection timed out"""
+    def __init__(self, patch_notes: 'PatchNotes', message: str) -> None:
+        super().__init__(patch_notes, message)
