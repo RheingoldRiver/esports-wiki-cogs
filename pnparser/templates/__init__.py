@@ -5,3 +5,4 @@ from .pai import Pai
 from .pbc import Pbc
 from .pnb import Pnb
 from .section import Section
+from .splash import SplashTableEntry

@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from .pnb import Pnb
     from .pbc import Pbc
     from .section import Section
+    from .splash import SplashTableEntry
 
 
 TEMPLATE: str = "{{{{pnbh|context='''{}'''<br>\n"

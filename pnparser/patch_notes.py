@@ -101,17 +101,17 @@ class PatchNotes:
                     result += "{{PatchSplashTable|br=2\n"
 
                     if section.borders.index(border) == len(section.borders) - 1:
-                        for i, skin in border.skins:
+                        for i, skin in enumerate(border.skins):
                             result += f'|s{i + 1}=<div style="border:1px solid #BBB; padding:.33em"">'
                             # TODO: save files to wiki
-                            result += f"[[File:.jpg|350px]]</div>'''{skin.title}'''"
+                            result += f"[[File:.jpg|350px]]</div>'''{skin.title}'''\n"
                         
                         result += TEMPLATE_END
                         result += CLOSE_DIV
 
                     else:
-                        for i, skin in border.skins:
-                            result += f"|s{i + 1}={{{{SplashTableEntry|{skin.title}}}}}"
+                        for i, skin in enumerate(border.skins):
+                            result += f"|s{i + 1}={{{{SplashTableEntry|{skin.title}}}}}\n"
 
                         result += TEMPLATE_END
                         result += LINE_BREAK
@@ -572,14 +572,11 @@ class PatchNotes:
                         border.context = border_context[0].text.strip()
 
                     # loop through all the skin containers
-                    for skin_container in filter(lambda tag: tag["class"] == "gs-container", content_list):
-                        skins: 'list[Tag]' = list(skin_container.children)
+                    for skin_container in Filters.tags_by_class("gs-container", content_list):
 
                         # loop through all the skins inside the container
-                        for skin in skins:
-                            if skin["class"] == "skin-box":
-                                skin_title: str = next(Filters.tags_by_class("skin-title", list(skin.children))).text.strip()
-                                # border.skins.append(SplashTableEntry(skin_title))
+                        for skin in Filters.tags_by_class("skin-box", list(skin_container.children)):
+                            border.skins.append(SplashTableEntry(skin.h4.text.strip()))
 
                 else:
                     border = Border(simplified=True)
