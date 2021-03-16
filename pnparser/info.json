@@ -3,9 +3,9 @@
 		"Bruno Blanes"
 	],
 	"name": "PatchNotesParser",
-	"description": "A set of commands useful when parsing League of Legends patch notes.",
-	"short": "A short description",
-	"install_msg": "HEY THERE! {stores desiger.icon.json}",
+	"description": "A set of useful commands for parsing League of Legends patch notes.",
+	"short": "A League of Legends patch notes parser.",
+	"install_msg": "Thanks for installing! XD",
 	"requirements": [
 		"bs4",
 		"rivercogutils",
