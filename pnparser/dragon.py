@@ -8,9 +8,10 @@ ITEMS: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/item.json"
 CHAMPIONS: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion.json"
 RUNES: str = "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/runesReforged.json"
 
+# TODO: parallel requests
 
 class Dragon:
-    runes: dict = {}
+    runes: 'list[dict[str, Any]]' = []
     items: 'list[dict[str, Any]]' = []
     champions: 'list[dict[str, Any]]' = []
     current_version: 'str | None' = None
@@ -36,9 +37,19 @@ class Dragon:
         for item in data:
             Dragon.items.append(data[item])
 
-        # TODO: fix the remaining lists
+        # get runes from data dragon
         response = HttpClient.get(RUNES.format(f"{latest_version}"))
-        Dragon.runes = Json.loads(response.text)
+        data = Json.loads(response.text)
+        Dragon.runes = []
+        for group in data:
+            Dragon.runes.append(group)
+
+            if group["slots"]:
+                for slot in group["slots"]:
+                    for rune in slot["runes"]:
+                        Dragon.runes.append(rune)
+
+        # set dragon current version
         Dragon.current_version = latest_version
 
     @staticmethod

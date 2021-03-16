@@ -8,7 +8,6 @@ from datetime import datetime as DateTime
 
 from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
-import re as Regex
 
 from typing import TYPE_CHECKING
 
