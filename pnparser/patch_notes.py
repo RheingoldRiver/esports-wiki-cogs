@@ -67,9 +67,14 @@ class PatchNotes:
         result += NEW_LINE
 
         # tables of content
-        result += "{{PatchNotesTOC"
+        result += "{{PatchNotesTOC\n"
         for section in self.sections:
-            result += section.print_toc()
+            toc_section: str = section.print_toc()
+
+            # remove extra line breaks
+            if result[-2] == "\n" and toc_section[0] == "\n":
+                toc_section = toc_section[1:]
+            result += toc_section
         
         result += TEMPLATE_END
         result += BOX_END

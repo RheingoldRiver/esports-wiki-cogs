@@ -14,14 +14,13 @@ class Section:
         self.title: str = title
         self.borders: 'list[Border]' = []
 
-    def print_toc(self) -> str:
-        result: str = f"|group{self.id}={self.title}"
-        
-        if not self.title == "Champions" or "Items" or "Runes":
-            return result + NEW_LINE
+    def print_toc(self) -> str:        
+        if not self.title in ["Champions", "Items", "Runes"]:
+            return f"|group{self.id}={self.title}\n"
         else:
             icons: str = ""
-            result = result[:-1] + NEW_LINE
+            result: str = f"\n|group{self.id}={self.title}\n"
+            result += f"|group{self.id}types={self.title[:-1]}\n"
             result += f"|group{self.id}images="
             
             for border in self.borders:
@@ -40,7 +39,7 @@ class Section:
                         if any(x["name"] == change.name for x in Dragon.runes):
                             icons += f"{change.name}, "
             if icons and not icons.isspace():
-                result += icons[:-2] + NEW_LINE
+                result += icons[:-2] + NEW_LINE + NEW_LINE
             return result
     
     def print(self) -> str:
