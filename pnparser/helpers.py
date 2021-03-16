@@ -16,9 +16,7 @@ class Helper:
     def capitalize(text: str) -> str:
         words: 'list[str]' = Regex.split(r"( |-|\"|/)", text)
         lowered_words: 'list[str]' = [word if word in EXCEPTIONS else word.lower() for word in words]
-        print(lowered_words)
         final_words: 'list[str]' = [word if word in EXCEPTIONS else word.capitalize() for word in lowered_words]
-        print(final_words)
         return "".join(final_words)
 
     @staticmethod
