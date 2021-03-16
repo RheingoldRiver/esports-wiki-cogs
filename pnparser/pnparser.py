@@ -180,10 +180,10 @@ class PatchNotesParser(commands.Cog):
         except ParserHttpError as e:
             pass
 
-        # give detailed report to devs
-        except ParserError as e:
-            await self.__auto_report(ctx, e.message, e.patch_notes)
-
         except ParserTimeoutError as e:
             self.patch_notes = e.patch_notes
             await ctx.send(e.message)
+
+        # give detailed report to devs
+        except ParserError as e:
+            await self.__auto_report(ctx, e.message, e.patch_notes)

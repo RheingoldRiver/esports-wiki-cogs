@@ -53,5 +53,7 @@ class Border:
 
                 result += CLOSE_DIV
         elif self.context and not self.context.isspace():
-            result += f":''{self.context}''"
+            result += OPEN_BORDER_DIV
+            result += f":''{self.context}''\n"
+            result += CLOSE_DIV
         return result

@@ -7,6 +7,7 @@ from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
 
 from bs4 import BeautifulSoup, Tag
+from bs4.element import NavigableString
 import requests as HttpClient
 
 from typing import TYPE_CHECKING
@@ -181,17 +182,17 @@ class PatchNotes:
                 # loop through all the properties of the current attribute
                 for attribute_info in Filters.tags(list(content_info.children)):
                     
-                    # sets the name of the attribute
-                    if "attribute" in attribute_info["class"]:
-                        attribute.name = attribute_info.text.strip()
-                    
                     # handle previous attribute value
-                    elif "attribute-before" in attribute_info["class"]:
+                    if "attribute-before" in attribute_info["class"]:
                         attribute.before = attribute_info.text.strip()
                     
                     # handle new attribute value
                     elif "attribute-after" in attribute_info["class"]:
                         attribute.after = attribute_info.text.strip()
+                    
+                    # sets the name of the attribute
+                    elif "attribute" in attribute_info["class"]:
+                        attribute.name = attribute_info.text.strip()
 
     def __changes(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
         ability: 'Pai | None' = None
@@ -258,7 +259,7 @@ class PatchNotes:
                 # loop through all the attributes that changed
                 for attribute_info in Filters.tags_with_classes(list(content.children)):
                     if "attribute" in attribute_info["class"]:
-                        attribute = Pbc(attribute_info.text.strip())
+                        attribute = Pbc(attribute_info.find(text=True, recursive=False).strip())
 
                         # gets the attribute status
                         for tag in Filters.tags_with_classes(list(attribute_info.children)):
@@ -604,18 +605,18 @@ class PatchNotes:
                             # loop through the properties of the current attribute
                             attributes: 'Iterator[Tag]' = Filters.tags(list(content_info.children))
                             for attribute_info in attributes:
-                    
-                                # sets the name of the attribute
-                                if "attribute" in attribute_info["class"]:
-                                    attribute.name = attribute_info.text.strip()
                                 
                                 # handle previous attribute value
-                                elif "attribute-before" in attribute_info["class"]:
+                                if "attribute-before" in attribute_info["class"]:
                                     attribute.before = attribute_info.text.strip()
                                 
                                 # handle new attribute value
                                 elif "attribute-after" in attribute_info["class"]:
                                     attribute.after = attribute_info.text.strip()
+                    
+                                # sets the name of the attribute
+                                elif "attribute" in attribute_info["class"]:
+                                    attribute.name = attribute_info.text.strip()
 
         try:
             # parse and save to wiki
