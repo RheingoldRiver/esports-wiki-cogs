@@ -8,7 +8,6 @@ from redbot.core.utils.tunnel import Tunnel
 from redbot.core import commands
 
 import rivercogutils as RiverCogUtils
-from requests import ReadTimeout
 import re as Regex
 
 from typing import TYPE_CHECKING
@@ -19,7 +18,7 @@ if TYPE_CHECKING:
     from redbot.core.bot import Red
 
 
-CURRENT_VERSION: str = "0.1.0"
+CURRENT_VERSION: str = "0.5.0"
             
 
 class PatchNotesParser(commands.Cog):
@@ -103,31 +102,34 @@ class PatchNotesParser(commands.Cog):
         pass
 
     @designer.command()
-    async def geticon(self, ctx: GuildContext, designer_name: str) -> None:
+    async def geticon(self, ctx: GuildContext, *designer_name: str) -> None:
         """Get the icon used for the specified designer"""
-        await ctx.send(f"`{Designer.get_designer_icon(designer_name)}`")
+        try:
+            await ctx.send(f"`{Designer.get_designer_icon(' '.join(designer_name))}`")
+        except KeyError:
+            await ctx.send("Designer not found.")
 
-    @designer.command()
-    async def seticon(self, ctx: GuildContext, designer_name: str, designer_icon: str) -> None:
-        """Set a new icon for the specified designer"""
-        # TODO: Set new icon
-        pass
+    #@designer.command()
+    #async def seticon(self, ctx: GuildContext, designer_name: str, designer_icon: str) -> None:
+    #    """Set a new icon for the specified designer"""
+    #    # TODO: Set new icon
+    #    pass
 
-    @designer.command()
-    async def add(self, ctx: GuildContext, designer_name: str, designer_icon: str) -> None:
-        """Add a new designer and icon"""
-        Designer.add_designer(designer_name, designer_icon)
-        await ctx.send(f"Designer {designer_name} added successfully.")
+    #@designer.command()
+    #async def add(self, ctx: GuildContext, designer_name: str, designer_icon: str) -> None:
+    #    """Add a new designer and icon"""
+    #    Designer.add_designer(designer_name, designer_icon)
+    #    await ctx.send(f"Designer {designer_name} added successfully.")
 
     @pnparser.group()
     async def dragon(self, ctx: GuildContext) -> None:
-        """Commands to get information related to ddragon"""
+        """Commands to get information related to dragon"""
         pass
 
     @dragon.command("version")
     async def dragon_version(self, ctx: GuildContext) -> None:
         """Get the current version number"""
-        await ctx.send(f"Current version of ddragon is `{Dragon.current_version}`.")
+        await ctx.send(f"Current version of dragon is `{Dragon.current_version}`.")
 
     @dragon.command()
     async def update(self, ctx: GuildContext) -> None:
@@ -138,22 +140,22 @@ class PatchNotesParser(commands.Cog):
         # check if there was an update
         if current_version == Dragon.current_version:
             await ctx.send(f"Already up to date, latest version is `{current_version}`.")
-        else: await ctx.send(f"Updated ddragon to version `{current_version}`.")
+        else: await ctx.send(f"Updated dragon to version `{Dragon.current_version}`.")
 
     @pnparser.group()
     async def parse(self, ctx: GuildContext) -> None:
         """Commands to parse League of Legends patch notes"""
         pass
 
-    @parse.command()
-    async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
-        """Parse the mid-patch section from the specified patch notes"""
+    #@parse.command()
+    #async def midpatch(self, ctx: GuildContext, patch_version: str) -> None:
+    #    """Parse the mid-patch section from the specified patch notes"""
 
-        # TODO: Parse mid-patch
-        # validate patch notes version number format
-        if not self.__validate_patch(patch_version):
-            await ctx.send("Incorrect patch notes version number format.")
-            return
+    #    # TODO: Parse mid-patch
+    #    # validate patch notes version number format
+    #    if not self.__validate_patch(patch_version):
+    #        await ctx.send("Incorrect patch notes version number format.")
+    #        return
 
     @parse.command()
     async def all(self, ctx: GuildContext, patch_version: str) -> None:
