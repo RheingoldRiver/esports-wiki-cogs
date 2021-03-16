@@ -7,7 +7,6 @@ from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
 
 from bs4 import BeautifulSoup, Tag
-from bs4.element import NavigableString
 import requests as HttpClient
 
 from typing import TYPE_CHECKING

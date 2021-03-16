@@ -5,10 +5,14 @@
 	"name": "PatchNotesParser",
 	"description": "A set of useful commands for parsing League of Legends patch notes.",
 	"short": "A League of Legends patch notes parser.",
-	"install_msg": "Thanks for installing! XD",
+	"install_msg": "Thanks for installing PatchNotesParser! XD\n\nThis COG stores a dictionary of strings in a separate file called \"designer_icons.json\".\nThis COG also requires the following libraries to work properly: `bs4, typing, datetime, dateutil, requests, rivercogutils, river_mwclient`.\nIt will also do a few GET requests to https://leagueoflegends.com and https://ddragon.leagueoflegends.com to get all the data needed for parsing. To parse use `[p]pnparser parse all <patch_notes_version>` or type `[p]pnparser help` to see all available commands.",
 	"requirements": [
 		"bs4",
-		"rivercogutils",
-		"river_mwclient"
+		"typing",
+		"datetime",
+		"dateutil",
+		"requests",
+		"git+git://github.com/RheingoldRiver/rivercogutils",
+		"git+git://github.com/RheingoldRiver/river_mwclient"
 	]
 }
