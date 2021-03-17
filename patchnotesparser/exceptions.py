@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .patch_notes import PatchNotes
+    from patchnotesparser.patch_notes import PatchNotes
 
 
 class ParserError(Exception):

@@ -1,8 +1,8 @@
 # static
 ONLY_INCLUDE: str = "<onlyinclude>"
-BOX_START: str = "{{Box|Start}}\n"
-BOX_BREAK: str = "{{Box|Break}}\n"
-BOX_END: str = "{{Box|End}}\n"
+BOX_START: str = "{{Box|start}}\n"
+BOX_BREAK: str = "{{Box|break}}\n"
+BOX_END: str = "{{Box|end}}\n"
 LINE_BREAK: str = "<br>\n"
 THEMATIC_BREAK: str = "<hr>\n"
 TEMPLATE_END: str = "}}\n"

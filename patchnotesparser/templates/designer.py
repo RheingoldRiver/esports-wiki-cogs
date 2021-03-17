@@ -3,7 +3,6 @@ import json as Json
 import re as Regex
 
 ICONS_DB: str = Path.join(Path.dirname(__file__), "../data/designer_icons.json")
-TEMPLATE: str = "[[File:{0}|20px|link=]] {1}<br>\n"
 
 
 class Designer:
@@ -40,4 +39,4 @@ class Designer:
 
     def print(self) -> str:
         # print the designer template
-        return TEMPLATE.format(self.icon, self.__name)
+        return f"[[File:{self.icon}|20px|link=]] {self.__name}<br>\n"

@@ -1,9 +1,9 @@
 from typing import TYPE_CHECKING
-from ..templates.common import *
-from ..dragon import Dragon
+from patchnotesparser.templates.common import *
+from patchnotesparser.dragon import Dragon
 
 if TYPE_CHECKING:
-    from .border import Border
+    from patchnotesparser.templates.border import Border
 
 
 class Section:

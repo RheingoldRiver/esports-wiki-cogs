@@ -1,7 +1,7 @@
-from .exceptions import ParserError, ParserHttpError, ParserTimeoutError
-from .patch_notes import PatchNotes
-from .templates import Designer
-from .dragon import Dragon
+from patchnotesparser.exceptions import ParserError, ParserHttpError, ParserTimeoutError
+from patchnotesparser.patch_notes import PatchNotes
+from patchnotesparser.templates.designer import Designer
+from patchnotesparser.dragon import Dragon
 
 from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel

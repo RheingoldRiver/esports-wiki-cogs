@@ -1,18 +1,18 @@
 from typing import TYPE_CHECKING
-from .common import *
+from patchnotesparser.templates.common import *
 
 if TYPE_CHECKING:
-    from .pnb import Pnb
-    from .pbc import Pbc
-    from .section import Section
-    from .splash import SplashTableEntry
+    from patchnotesparser.templates.pnb import Pnb
+    from patchnotesparser.templates.pbc import Pbc
+    from patchnotesparser.templates.section import Section
+    from patchnotesparser.templates.splash import SplashTableEntry
 
 
 TEMPLATE: str = "{{{{pnbh|context='''{}'''<br>\n"
 
 
 class Border:
-    """class=\"content-border\""""
+    """The <div> border used by Riot in the patch notes for each change"""
     
     def __init__(self, title: str = "", context: str = "", simplified: bool = False) -> None:
         self.title: str = title

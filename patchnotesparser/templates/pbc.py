@@ -1,5 +1,3 @@
-TEMPLATE: str = "{{pbc"
-
 class Pbc:
     """Champions or items attributes"""
     
@@ -10,7 +8,7 @@ class Pbc:
         self.status: 'str | None' = None
 
     def print(self) -> str:
-        result: str = TEMPLATE
+        result: str = "{{pbc"
         
         if self.status:
             result += f"|ch={self.status}"

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from re import Match
 
 
-EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "QoL"]
+EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL"]
 
 
 class Helper:

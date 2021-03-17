@@ -1,16 +1,29 @@
 from datetime import date as Date
-from ..dragon import Dragon
+from patchnotesparser.templates.common import *
+from patchnotesparser.dragon import Dragon
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .pbc import Pbc
-    from .pai import Pai
+    from patchnotesparser.templates.pbc import Pbc
+    from patchnotesparser.templates.pai import Pai
+    
+    
+class ComplexPnb:
+    """A more complex way of printing changes"""
 
-TEMPLATE: str = "{{pnb"
+    def __init__(self, title: str, context: str) -> None:
+        self.title: str = title
+        self.context: str = context
+        self.text: 'list[str]' = []
+
+    def print(self) -> str:
+        result: str = ""
+        return result
+
 
 class Pnb:
-    """A champion or item change"""
+    """A champion, item, rune, spell or jungle camp change"""
     
     def __init__(self, name: str = "",
                  new: bool = False,
@@ -19,13 +32,14 @@ class Pnb:
         self.__name: str = ""
         self.name = name
         self.new: bool = new
-        self.removed: bool = removed
         self.context: str = ""
         self.summary: str = ""
-        self.date: 'Date | None' = date
+        self.removed: bool = removed
         self.changes: 'list[Pnb]' = []
-        self.attributes: 'list[Pbc]' = []
+        self.date: 'Date | None' = date
         self.abilities: 'list[Pai]' = []
+        self.attributes: 'list[Pbc]' = []
+        self.complex_changes: 'list[ComplexPnb] | None' = None
 
     @property
     def name(self) -> str:
@@ -38,7 +52,7 @@ class Pnb:
         self.__name = value.replace("’", "'")
 
     def print(self) -> str:
-        result: str = TEMPLATE
+        result: str = "{{pnb"
         
         if self.new:
             result += "|ch=new"
@@ -47,6 +61,7 @@ class Pnb:
         
         result += "|date=" + (str(self.date or ""))
         
+        # TODO: handle printing spells and camps
         if any(x["name"] == self.__name for x in Dragon.champions):
             result += f"|champion={self.__name}\n"
         elif any(x["name"] == self.__name for x in Dragon.items):
@@ -63,4 +78,11 @@ class Pnb:
             result += f"|context={self.context}\n"
 
         result += "|changes="
+
+        if self.complex_changes is not None:
+            for change in self.complex_changes:
+                result += change.print()
+            return result
+
+        # TODO: print usual changes        
         return result

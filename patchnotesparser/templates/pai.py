@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING
-from ..helpers import Helper
+from patchnotesparser.helpers import Helper
 
 if TYPE_CHECKING:
-    from .pbc import Pbc
+    from patchnotesparser.templates.pbc import Pbc
 
 
 class Pai:

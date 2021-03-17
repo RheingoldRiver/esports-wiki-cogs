@@ -1,4 +1,4 @@
-from .pnparser import PatchNotesParser
+from patchnotesparser.patchnotesparser_main import PatchNotesParser
 from redbot.core.bot import Red
 
 

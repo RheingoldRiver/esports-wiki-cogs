@@ -1,10 +1,19 @@
-from .exceptions import ParserError, ParserHttpError, ParserTimeoutError
-from .helpers import Helper, Filters
-from .dragon import Dragon
-from .templates import *
+from patchnotesparser.exceptions import ParserError, ParserHttpError, ParserTimeoutError
+from patchnotesparser.helpers import Helper, Filters
+from patchnotesparser.dragon import Dragon
+
+from patchnotesparser.templates.splash import SplashTableEntry
+from patchnotesparser.templates.pnb import Pnb, ComplexPnb
+from patchnotesparser.templates.designer import Designer
+from patchnotesparser.templates.section import Section
+from patchnotesparser.templates.border import Border
+from patchnotesparser.templates.common import *
+from patchnotesparser.templates.pai import Pai
+from patchnotesparser.templates.pbc import Pbc
 
 from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
+import sys as System
 
 from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
@@ -14,8 +23,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from river_mwclient.esports_client import EsportsClient
     from typing import Iterator
-
-# TODO: create statistics tab
 
 RIOT_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 SUMMARY: str = "Auto-parse League of Legends patch notes."
@@ -166,7 +173,7 @@ class PatchNotes:
         for content_info in content_list:
 
             # set the header, usually nerfs and buffs
-            if "ability-title" in content_info["class"] or content_info.name == "h3":
+            if content_info.name == "h3" or "ability-title" in content_info["class"]:
                 border = Border(context=content_info.text.strip(), simplified=True)
                 section.borders.append(border)
 
@@ -207,13 +214,44 @@ class PatchNotes:
             if content.has_attr("class") and "change-title" in content["class"]:
                 change.name = content.text.strip()
 
+            # handles complex changes
+            # see Xin Zhao on patch notes 11.6 for reference
+            elif not content.has_attr("class") and content.name == "h2":
+
+                # sometimes the group title will be a simple "h2" tag
+                # that doesn't mean this is a complex change
+                if not change.name or change.name.isspace():
+                    change.name = content.text.strip()
+                    continue
+
+                title: str = content.text.strip()
+                context: str = ""
+
+                # gets all the following paragraphs if any is present
+                for i in range(1, System.maxsize):
+                    element: Tag = content_list[content_list.index(content) + i]
+                    if not element.name == "p":
+                        break
+                    context += element.text.strip() + NEW_LINE
+                
+                if change.complex_changes is None:
+                    change.complex_changes = list()
+                change.complex_changes.append(ComplexPnb(title, context))
+
             # sets the change summary
             elif content.has_attr("class") and "summary" in content["class"]:
                 change.summary = content.text.strip()
 
             # sets the change context
             elif content.has_attr("class") and "context" in content["class"]:
-                change.context = content.text.strip()
+                if change.complex_changes is None:
+                    change.context = content.text.strip()
+                    continue
+
+                # if this is a complex change, then the context goes elsewhere
+                complex_content: 'list[str]' = change.complex_changes[-1].text
+                for text in content.text.strip().split("\n"):
+                    complex_content.append(text)
 
             # handle aditional context links
             elif content.name == "ul":
