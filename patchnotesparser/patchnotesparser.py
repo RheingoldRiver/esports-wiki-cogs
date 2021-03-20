@@ -31,7 +31,7 @@ class PatchNotesParser(commands.Cog):
                     self.bug_fix_channel = channel
                     break
     
-    async def __auto_report(self, ctx: GuildContext, message: str, patch_notes: PatchNotes) -> None:
+    async def _auto_report(self, ctx: GuildContext, message: str, patch_notes: PatchNotes) -> None:
         # TODO: remove embeded patch notes info
         await Tunnel.message_forwarder(destination=self.bug_fix_channel,
                                        content="Patch notes parser **auto report** from command "
@@ -48,7 +48,7 @@ class PatchNotesParser(commands.Cog):
                        "An automatic error report was generated and "
                        "someone will look into it.")
 
-    def __validate_patch(self, patch_version: str) -> bool:
+    def _validate_patch(self, patch_version: str) -> bool:
         if Regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
             self.patch_version = patch_version.strip().replace(',', '.').replace('-', '.')
             return True
@@ -149,7 +149,7 @@ class PatchNotesParser(commands.Cog):
 
     #    # TODO: Parse mid-patch
     #    # validate patch notes version number format
-    #    if not self.__validate_patch(patch_version):
+    #    if not self._validate_patch(patch_version):
     #        await ctx.send("Incorrect patch notes version number format.")
     #        return
 
@@ -158,7 +158,7 @@ class PatchNotesParser(commands.Cog):
         """Parse the entire specified patch notes"""
         
         # validate patch notes version number format
-        if not self.__validate_patch(patch_version):
+        if not self._validate_patch(patch_version):
             await ctx.send("Incorrect patch notes version number format.")
             return
         
@@ -184,4 +184,4 @@ class PatchNotesParser(commands.Cog):
 
         # give detailed report to devs
         except ParserError as e:
-            await self.__auto_report(ctx, e.message, e.patch_notes)
+            await self._auto_report(ctx, e.message, e.patch_notes)

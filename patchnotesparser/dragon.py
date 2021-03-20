@@ -23,7 +23,7 @@ class Dragon:
     @staticmethod
     def load_data() -> None:
         # check if update is needed
-        latest_version: str = Dragon.__get_latest_version()
+        latest_version: str = Dragon._get_latest_version()
         if latest_version == Dragon.current_version:
             return
 
@@ -64,6 +64,6 @@ class Dragon:
         Dragon.current_version = latest_version
 
     @staticmethod
-    def __get_latest_version() -> str:
+    def _get_latest_version() -> str:
         response = HttpClient.get(VERSIONS)
         return Json.loads(response.text)[0]

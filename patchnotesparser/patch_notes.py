@@ -51,7 +51,7 @@ class PatchNotes:
         self.published_date = DateTime.now()
         self.designers: 'list[Designer]' = []
         
-    def __print(self) -> None:
+    def _print(self) -> None:
         # header
         result: str = PATCH_TABS_HEADER
         result += ONLY_INCLUDE
@@ -139,7 +139,7 @@ class PatchNotes:
         self.page_url = WIKI_PAGE.format(self.patch_version)
         self.site.save_tile(self.page_url, result, SUMMARY)
 
-    def __aram(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
+    def _aram(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
         # loop through all the changes
         for content_info in content_list:
 
@@ -171,7 +171,7 @@ class PatchNotes:
                     elif "attribute" in attribute_info["class"]:
                         attribute.name = attribute_info.text.strip()
 
-    def __changes(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
+    def _changes(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
         ability: 'Pai | None' = None
         inner_change: 'Pnb | None' = None
         new: bool = any("new" in x["class"] for x in Filters.tags_with_classes(content_list))
@@ -579,7 +579,7 @@ class PatchNotes:
 
                 # handles ARAM changes
                 elif section.title == "ARAM Balance Changes":
-                    self.__aram(border, section, content_list)
+                    self._aram(border, section, content_list)
 
                 # handles future skins and chromas
                 elif section.title == "Upcoming Skins & Chromas":
@@ -599,7 +599,7 @@ class PatchNotes:
 
                 # handle pretty printed changes    
                 elif any("attribute-change" in x["class"] for x in Filters.tags_with_classes(content_list)):
-                    self.__changes(border, section, content_list)
+                    self._changes(border, section, content_list)
 
                 else:
                     # most likely plain text boxes
@@ -642,7 +642,7 @@ class PatchNotes:
 
         try:
             # parse and save to wiki
-            self.__print()
+            self._print()
             return self
         except HttpClient.ReadTimeout:
             raise ParserTimeoutError(self, "Whoops, the site is taking too long to respond, try again later.")
