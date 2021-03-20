@@ -38,6 +38,9 @@ class Border:
                 if section.borders.index(self) == len(section.borders) - 1 or \
                 not section.borders[section.borders.index(self) + 1].simplified:
                     result += TEMPLATE_END
+
+                else:
+                    result += "<br><hr><br>"
             else:
                 result += OPEN_BORDER_DIV
                 result += self.context

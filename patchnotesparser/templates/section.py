@@ -13,33 +13,43 @@ class Section:
         self.title: str = title
         self.borders: 'list[Border]' = []
 
-    def print_toc(self) -> str:        
-        if not self.title in ["Champions", "Items", "Runes"]:
-            return f"|group{self.id}={self.title}\n"
-        else:
+    def print_toc(self) -> str:
+        # TODO: Add support for camps in TOC
+        if any(word in self.title for word in ["Champion", "Item", "Rune", "Summoner"]):
             icons: str = ""
             result: str = f"\n|group{self.id}={self.title}\n"
-            result += f"|group{self.id}types={self.title[:-1]}\n"
+            group_type: str = self.title.split(' ')[0]
+            group_type = group_type if not group_type[-1] == "s" else group_type[:-1]
+
+            result += f"|group{self.id}types={group_type}\n"
             result += f"|group{self.id}images="
             
             for border in self.borders:
                 for change in border.changes:
-                    if self.title == "Champions":
+                    if "Champion" in self.title:
                         if any(x["name"] == change.name for x in Dragon.champions):
                             icons += f"{change.name}, "
-                    elif self.title == "Items":
+                    elif "Item" in self.title:
                         if any(x["name"] == change.name for x in Dragon.items):
                             icons += f"{change.name}, "
                         else:
                             for inner_change in change.changes:
                                 if any(x["name"] == inner_change.name for x in Dragon.items):
                                     icons += f"{inner_change.name}, "
-                    elif self.title == "Runes":
+                    elif "Rune" in self.title:
                         if any(x["name"] == change.name for x in Dragon.runes):
                             icons += f"{change.name}, "
+                    elif "Summoner" in self.title:
+                        if any(x["name"] == change.name for x in Dragon.spells):
+                            icons += f"{change.name}, "
+                    #elif "Camp" in self.title:
+                    #    if any(x["name"] == change.name for x in Dragon.camps):
+                    #        icons += f"{change.name}, "
             if icons and not icons.isspace():
                 result += icons[:-2] + NEW_LINE + NEW_LINE
             return result
+        else:
+            return f"|group{self.id}={self.title}\n"
     
     def print(self) -> str:
         return TITLE.format(self.title)

@@ -188,7 +188,7 @@ class PatchNotes:
             # handles complex changes
             # see Xin Zhao on patch notes 11.6 for reference
             elif not content.has_attr("class") and content.name == "h2":
-
+                
                 # sometimes the group title will be a simple "h2" tag
                 # that doesn't mean this is a complex change
                 if not change.name or change.name.isspace():
@@ -556,9 +556,7 @@ class PatchNotes:
                 if section is None:
                     raise ParserError(self, 'HTML node with `class="content-border"` '
                                     'found before the `"header-primary"` was defined.')
-                content_list: 'list[Tag]' = list(filter(lambda tag:
-                                                        isinstance(tag, Tag),
-                                                        tag.div.div.children))
+                content_list: 'list[Tag]' = Filters.tags(list(tag.div.div.children))
 
                 # handles mid-patch updates
                 if section.title == "Mid-Patch Updates":
@@ -578,11 +576,6 @@ class PatchNotes:
                         if len(border_context) > 0:
                             border.context = border_context[-1].p.text.strip()
                     section.borders.append(border)
-
-                # handles champion, item and rune changes
-                elif section.title == "Champions" or section.title == "Items" or section.title == "Runes":
-                    self.__changes(border, section, content_list)
-                    pass
 
                 # handles ARAM changes
                 elif section.title == "ARAM Balance Changes":
@@ -604,7 +597,12 @@ class PatchNotes:
                         for skin in Filters.tags_by_class("skin-box", list(skin_container.children)):
                             border.skins.append(SplashTableEntry(skin.h4.text.strip()))
 
+                # handle pretty printed changes    
+                elif any("attribute-change" in x["class"] for x in Filters.tags_with_classes(content_list)):
+                    self.__changes(border, section, content_list)
+
                 else:
+                    # most likely plain text boxes
                     border = Border(simplified=True)
                     section.borders.append(border)
 
@@ -628,8 +626,7 @@ class PatchNotes:
                             border.attributes.append(attribute)
 
                             # loop through the properties of the current attribute
-                            attributes: 'Iterator[Tag]' = Filters.tags(list(content_info.children))
-                            for attribute_info in attributes:
+                            for attribute_info in Filters.tags(list(content_info.children)):
                                 
                                 # handle previous attribute value
                                 if "attribute-before" in attribute_info["class"]:
@@ -638,7 +635,7 @@ class PatchNotes:
                                 # handle new attribute value
                                 elif "attribute-after" in attribute_info["class"]:
                                     attribute.after = attribute_info.text.strip()
-                    
+                
                                 # sets the name of the attribute
                                 elif "attribute" in attribute_info["class"]:
                                     attribute.name = attribute_info.text.strip()

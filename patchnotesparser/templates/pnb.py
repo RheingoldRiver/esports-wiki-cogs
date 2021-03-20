@@ -86,13 +86,17 @@ class Pnb:
         
         result += "|date=" + (str(self.date or ""))
         
-        # TODO: handle printing spells and camps
+        # TODO: handle printing jungle camps
         if any(x["name"] == self.__name for x in Dragon.champions):
             result += f"|champion={self.__name}\n"
         elif any(x["name"] == self.__name for x in Dragon.items):
             result += f"|item={self.__name}\n"
         elif any(x["name"] == self.__name for x in Dragon.runes):
             result += f"|rune={self.__name}\n"
+        elif any(x["name"] == self.__name for x in Dragon.spells):
+            result += f"|spell={self.__name}\n"
+        #elif any(x["name"] == self.__name for x in Dragon.camps):
+        #    result += f"|camp={self.__name}\n"
         elif self.__name and not self.__name.isspace():
             result += f"|title={self.__name}\n"
         
