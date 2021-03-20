@@ -1,14 +1,8 @@
-from typing import TYPE_CHECKING
 from patchnotesparser.templates.common import *
-
-if TYPE_CHECKING:
-    from patchnotesparser.templates.pnb import Pnb
-    from patchnotesparser.templates.pbc import Pbc
-    from patchnotesparser.templates.section import Section
-    from patchnotesparser.templates.splash import SplashTableEntry
-
-
-TEMPLATE: str = "{{{{pnbh|context='''{}'''<br>\n"
+from patchnotesparser.templates.pnb import Pnb
+from patchnotesparser.templates.pbc import Pbc
+from patchnotesparser.templates.section import Section
+from patchnotesparser.templates.splash import SplashTableEntry
 
 
 class Border:
@@ -33,7 +27,7 @@ class Border:
             # don't want to keep section title here
             if section.title == "ARAM Balance Changes" or section.title == "Mid-Patch Updates":
                 if section.borders.index(self) == 0:
-                    result += TEMPLATE.format(self.context)
+                    result += f"{{{{pnbh|context='''{self.context}'''<br>\n"
                 else: result += f"\n'''{self.context}'''<br>\n"
 
                 for attribute in self.attributes:

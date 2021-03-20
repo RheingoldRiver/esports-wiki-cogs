@@ -38,5 +38,10 @@ class Filters:
         return filter(lambda tag: tag.name == tag_name, array)
 
     @staticmethod
+    def first_tag_by_name(class_name: str, array: 'list[Tag]') -> 'Tag | None':
+        tags: 'list[Tag]' = list(Filters.tags_by_name(class_name, array))
+        return (tags[0] if len(tags) > 0 else None)
+
+    @staticmethod
     def tags_by_class(class_name: str, array: 'list[Tag]') -> 'Iterator[Tag]':
         return filter(lambda tag: class_name in tag["class"], Filters.tags_with_classes(array))

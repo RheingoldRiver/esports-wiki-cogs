@@ -37,6 +37,9 @@ def ability_base_attributes() -> 'list[str]':
             "Cost",
             "Move Speed",
             "Second Hit Healing Vs. Minions",
+            "Dash Speed",
+            "Cast Range",
+            "Duration",
             "Toggle Abilities Bugfix",
             "Hecarim Bugfix"]
 
@@ -133,34 +136,6 @@ class PatchNotes:
                 
                 for change in border.changes:
                     result += change.print()
-
-                    for attribute in change.attributes:
-                        result += attribute.print()
-                    
-                    if any(x["name"] == change.name for x in Dragon.champions):
-                        for ability in change.abilities:
-                            result += ability.print()
-
-                            for attribute in ability.attributes:
-                                result += attribute.print()
-                        
-                        if result[-1] == "=":
-                            result = result[:-9]
-                    else:
-                        for inner_change in change.changes:
-                            if any(x["name"] == inner_change.name for x in Dragon.champions):
-
-                                if result[-1] == "=":
-                                    result = result[:-9]
-
-                                result += CI.format(inner_change.name)
-                                for ability in inner_change.abilities:
-                                    result += ability.print()
-                            else:
-                                result += ANCHOR.format(inner_change.name)
-                                for attribute in inner_change.attributes:
-                                    result += attribute.print()
-                    result += TEMPLATE_END
             result += NEW_LINE
         result += PATCH_LIST_NAVBOX
         
@@ -360,7 +335,7 @@ class PatchNotes:
 
         # loop through all the mid-patch updates
         for content in content_list:
-            if "change-title" in content["class"]:
+            if content.has_attr("class") and "change-title" in content["class"]:
                 # border is not defined or its title is
                 # different from the current border title
                 if border is None or border.title != content.text.strip():
@@ -368,16 +343,21 @@ class PatchNotes:
                     section.borders.append(border)
                     continue
 
-            # could not find the border title
-            if border.title is None or border.title.isspace():
-                raise ParserError(self, "Could not locate an HTML node with class 'change-title'.")
+            if border is None:
+                # border title is sometimes defined in an h2 tag
+                h2: 'Tag | None' = Filters.first_tag_by_name("h2", content_list)
+                if h2 is None:
+                    raise ParserError(self, "Could not locate the border title.")
+
+                border = Border(h2.text.strip())
+                section.borders.append(border)
 
             # border context text
-            elif "context" in content["class"]:
+            if content.has_attr("class") and "context" in content["class"]:
                 border.context = content.text.strip()
 
             # attribute is from a champion ability
-            elif "ability-title" in content["class"]:
+            elif content.has_attr("class") and "ability-title" in content["class"]:
                 change = Pnb(content.text.strip())
                 
                 # simplified borders don't have changes
@@ -385,17 +365,17 @@ class PatchNotes:
                     border.changes.append(change)
 
             # handles champion or item attribute change
-            elif "attribute-change" in content["class"]:
+            elif content.has_attr("class") and "attribute-change" in content["class"]:
                 attribute: 'Pbc | None' = None
                 if change is None: raise ParserError(self, 'HTML node with class="attribute-change" found '
                                                     'before the first "ability-title" was defined.')
 
                 # get all the properties of the current attribute
-                for attribute_tag in filter(lambda tag:
-                                            isinstance(tag, Tag) and
-                                            tag.has_attr("class"),
-                                            content.children):
-                    if "attribute" in attribute_tag["class"]:
+                for attribute_tag in Filters.tags_with_classes(list(content.children)):
+                    if "context" in attribute_tag["class"]:
+                        change.context = attribute_tag.text.strip()
+
+                    elif "attribute" in attribute_tag["class"]:
                         attribute_info: str = Helper.capitalize(attribute_tag.text.strip())
 
                         # the current change reffers to a champion
@@ -480,7 +460,7 @@ class PatchNotes:
                             border.attributes.append(attribute)
 
                     elif attribute is None:
-                        raise ParserError(self, "Field 'attribute' was not defined.")
+                        raise ParserError(self, f"Field 'attribute' for {change.name} was not defined.")
 
                     # handle previous attribute value and "attribute removed" text
                     elif any(x in attribute_tag["class"] for x in ["attribute-before", "attribute-removed"]):
@@ -491,7 +471,7 @@ class PatchNotes:
                         attribute.after = attribute_tag.text.strip()
 
             # reset values at the end of a change
-            elif "divider" in content["class"]:
+            elif content.has_attr("class") and "divider" in content["class"]:
                 change = None
                 ability = None
 
@@ -506,7 +486,7 @@ class PatchNotes:
             raise ParserHttpError(self, "Expected response of type `HTTP 200`, "
                                 f"but got back `HTTP {response.status_code}`.")
 
-        # assert ddragon is loaded
+        # assert dragon is loaded
         Dragon.load_data()
 
         # load the html contents of the page

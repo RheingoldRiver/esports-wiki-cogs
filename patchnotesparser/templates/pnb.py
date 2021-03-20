@@ -49,6 +49,8 @@ class Pnb:
     def name(self, value: str) -> None:
         if "(Ornn Upgrade)" in value:
             value = value[:value.index("(Ornn Upgrade)")]
+        elif value == "Control Wards":
+            value = value[:-1]
         self.__name = value.replace("’", "'")
 
     def print(self) -> str:
@@ -84,5 +86,31 @@ class Pnb:
                 result += change.print()
             return result
 
-        # TODO: print usual changes        
+        for attribute in self.attributes:
+            result += attribute.print()
+        
+        if any(x["name"] == self.name for x in Dragon.champions):
+            for ability in self.abilities:
+                result += ability.print()
+
+                for attribute in ability.attributes:
+                    result += attribute.print()
+            
+            if result[-1] == "=":
+                result = result[:-9]
+        else:
+            for inner_change in self.changes:
+                if any(x["name"] == inner_change.name for x in Dragon.champions):
+
+                    if result[-1] == "=":
+                        result = result[:-9]
+
+                    result += CI.format(inner_change.name)
+                    for ability in inner_change.abilities:
+                        result += ability.print()
+                else:
+                    result += ANCHOR.format(inner_change.name)
+                    for attribute in inner_change.attributes:
+                        result += attribute.print()
+        result += TEMPLATE_END
         return result

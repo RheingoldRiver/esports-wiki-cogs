@@ -1,8 +1,0 @@
-import patchnotesparser.templates.border
-import patchnotesparser.templates.common
-import patchnotesparser.templates.designer
-import patchnotesparser.templates.pai
-import patchnotesparser.templates.pbc
-import patchnotesparser.templates.pnb
-import patchnotesparser.templates.section
-import patchnotesparser.templates.splash
