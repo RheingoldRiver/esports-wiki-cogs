@@ -1,4 +1,4 @@
-from patchnotesparser.patchnotesparser_main import PatchNotesParser
+from patchnotesparser.patchnotesparser import PatchNotesParser
 from redbot.core.bot import Red
 
 def setup(bot: Red) -> None:

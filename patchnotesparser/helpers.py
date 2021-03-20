@@ -1,11 +1,6 @@
-import re as Regex
+from typing import Any, Iterator
 from bs4 import Tag
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Any, Iterator
-    from re import Match
+import re as Regex
 
 
 EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL"]
@@ -20,7 +15,7 @@ class Helper:
         return "".join(final_words)
 
     @staticmethod
-    def try_match_ability_name(text: str) -> 'Match[str] | None':
+    def try_match_ability_name(text: str) -> 'Regex.Match[str] | None':
         return Regex.search(r"([QWER]|(PASSIVE))\s-\s", text, Regex.IGNORECASE)
 
 

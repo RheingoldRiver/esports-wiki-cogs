@@ -1,21 +1,17 @@
 from patchnotesparser.exceptions import ParserError, ParserHttpError, ParserTimeoutError
-from patchnotesparser.patch_notes import PatchNotes
 from patchnotesparser.templates.designer import Designer
+from patchnotesparser.patch_notes import PatchNotes
 from patchnotesparser.dragon import Dragon
 
 from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel
 from redbot.core import commands
+from discord.guild import Guild
+from redbot.core.bot import Red
 
+from river_mwclient.esports_client import EsportsClient
 import rivercogutils as RiverCogUtils
 import re as Regex
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from river_mwclient.esports_client import EsportsClient
-    from discord.guild import Guild
-    from redbot.core.bot import Red
 
 
 CURRENT_VERSION: str = "0.5.0"

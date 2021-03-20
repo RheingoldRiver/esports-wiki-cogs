@@ -2,6 +2,7 @@ import os.path as Path
 import json as Json
 import re as Regex
 
+
 ICONS_DB: str = Path.join(Path.dirname(__file__), "../data/designer_icons.json")
 
 

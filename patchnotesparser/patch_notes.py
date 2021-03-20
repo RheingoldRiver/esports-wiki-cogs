@@ -15,14 +15,10 @@ from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
 import sys as System
 
+from river_mwclient.esports_client import EsportsClient
 from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from river_mwclient.esports_client import EsportsClient
-    from typing import Iterator
+from typing import Iterator
 
 RIOT_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 SUMMARY: str = "Auto-parse League of Legends patch notes."

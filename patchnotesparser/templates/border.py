@@ -1,8 +1,8 @@
+from patchnotesparser.templates.splash import SplashTableEntry
+from patchnotesparser.templates.section import Section
 from patchnotesparser.templates.common import *
 from patchnotesparser.templates.pnb import Pnb
 from patchnotesparser.templates.pbc import Pbc
-from patchnotesparser.templates.section import Section
-from patchnotesparser.templates.splash import SplashTableEntry
 
 
 class Border:

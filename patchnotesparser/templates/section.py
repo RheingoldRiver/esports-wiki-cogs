@@ -1,10 +1,9 @@
-from typing import TYPE_CHECKING
 from patchnotesparser.templates.common import *
 from patchnotesparser.dragon import Dragon
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from patchnotesparser.templates.border import Border
-
 
 class Section:
     """== {title} =="""

@@ -1,12 +1,8 @@
-from datetime import date as Date
 from patchnotesparser.templates.common import *
+from patchnotesparser.templates.pbc import Pbc
+from patchnotesparser.templates.pai import Pai
 from patchnotesparser.dragon import Dragon
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from patchnotesparser.templates.pbc import Pbc
-    from patchnotesparser.templates.pai import Pai
+from datetime import date as Date
     
     
 class ComplexPnb:
