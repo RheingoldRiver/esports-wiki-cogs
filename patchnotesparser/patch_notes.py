@@ -221,8 +221,9 @@ class PatchNotes:
 
                 # if this is a complex change, then the context goes elsewhere
                 complex_content: 'list[str]' = change.complex_changes[-1].text
-                for text in content.text.strip().split("\n"):
-                    complex_content.append(text)
+                for context in content.text.split("\n"):
+                    if context and not context.isspace():
+                        complex_content.append(context.strip())
 
             # handle aditional context links
             elif content.name == "ul":
@@ -249,7 +250,13 @@ class PatchNotes:
                         raise ParserError(self, f"Was not expecting ability name '{ability_info}'.")
                     
                     ability = Pai(ability_info[result.span()[0] + len(result.group(0)):])
-                    change.abilities.append(ability)
+
+                    if change.complex_changes is None:
+                        change.abilities.append(ability)
+                        continue
+
+                    # complex changes goes elsewhere
+                    change.complex_changes[-1].abilities.append(ability)
 
                 else:
                     inner_change = Pnb(ability_info)
@@ -318,7 +325,12 @@ class PatchNotes:
 
                 # attribute is from a champion
                 elif attribute is not None:
-                    change.attributes.append(attribute)
+                    if change.complex_changes is None:
+                        change.attributes.append(attribute)
+                        continue
+
+                    # complex changes goes elsewhere
+                    change.complex_changes[-1].attributes.append(attribute)
 
         # for these, the border is empty
         border = Border()

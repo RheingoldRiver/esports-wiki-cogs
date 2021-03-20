@@ -12,9 +12,36 @@ class ComplexPnb:
         self.title: str = title
         self.context: str = context
         self.text: 'list[str]' = []
+        self.abilities: 'list[Pai]' = []
+        self.attributes: 'list[Pbc]' = []
 
     def print(self) -> str:
-        result: str = ""
+        # needed for the next line to work
+        result: str = "<br>\n"
+        result += TITLE.format(self.title)
+        result += self.context
+
+        if len(self.text) > 0:
+            result += '<ul style="list-style-type:none;">\n'
+
+            for text in self.text:
+                result += f"    <li>{text}</li><br>\n"
+            
+            # remove the last line break
+            result = result[:-5]
+            result += "\n</ul><hr>\n"
+            
+            for attribute in self.attributes:
+                result += attribute.print()
+                
+            for ability in self.abilities:
+                result += ability.print()
+
+                for attribute in ability.attributes:
+                    result += attribute.print()
+            
+            if result[-1] == "=":
+                result = result[:-9]
         return result
 
 
@@ -80,33 +107,32 @@ class Pnb:
         if self.complex_changes is not None:
             for change in self.complex_changes:
                 result += change.print()
-            return result
-
-        for attribute in self.attributes:
-            result += attribute.print()
-        
-        if any(x["name"] == self.name for x in Dragon.champions):
-            for ability in self.abilities:
-                result += ability.print()
-
-                for attribute in ability.attributes:
-                    result += attribute.print()
-            
-            if result[-1] == "=":
-                result = result[:-9]
         else:
-            for inner_change in self.changes:
-                if any(x["name"] == inner_change.name for x in Dragon.champions):
+            for attribute in self.attributes:
+                result += attribute.print()
+            
+            if any(x["name"] == self.name for x in Dragon.champions):
+                for ability in self.abilities:
+                    result += ability.print()
 
-                    if result[-1] == "=":
-                        result = result[:-9]
-
-                    result += CI.format(inner_change.name)
-                    for ability in inner_change.abilities:
-                        result += ability.print()
-                else:
-                    result += ANCHOR.format(inner_change.name)
-                    for attribute in inner_change.attributes:
+                    for attribute in ability.attributes:
                         result += attribute.print()
+                
+                if result[-1] == "=":
+                    result = result[:-9]
+            else:
+                for inner_change in self.changes:
+                    if any(x["name"] == inner_change.name for x in Dragon.champions):
+
+                        if result[-1] == "=":
+                            result = result[:-9]
+
+                        result += CI.format(inner_change.name)
+                        for ability in inner_change.abilities:
+                            result += ability.print()
+                    else:
+                        result += ANCHOR.format(inner_change.name)
+                        for attribute in inner_change.attributes:
+                            result += attribute.print()
         result += TEMPLATE_END
         return result
