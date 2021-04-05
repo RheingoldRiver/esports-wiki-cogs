@@ -1,4 +1,4 @@
-from .patchupdate import PatchUpdate
+from .patchupdate_cog import PatchUpdate
 
 
 def setup(bot):
