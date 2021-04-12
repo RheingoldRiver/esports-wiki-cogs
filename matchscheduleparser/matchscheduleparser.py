@@ -44,7 +44,8 @@ class MatchScheduleParser(commands.Cog):
             try:
                 schedule = get_schedule(tournament.upper(), stream)
             except TypeError:
-                await ctx.send("An error has occured. {} might not exist.".format(tournament))
+                await ctx.send(
+                    "An error has occured. {} might not exist. If your input has spaces, try again using quotes.".format(tournament))
                 return
         await ctx.author.send(file=text_to_file(schedule, filename="matchschedule.txt"))
         await ctx.send("Check your DMs!")

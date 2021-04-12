@@ -1,4 +1,23 @@
 {
-  "author": "Aradia",
-  "name": "PatchUpdate"
+  "author": ["Aradia Megido#2552"],
+  "description": "Automate updating on-wiki stats when patches come out.",
+  "end_user_data_statement": "No personal data is stored.",
+  "install_msg": "Use [p]patchupdate to get started.",
+  "short": "Patch Update",
+  "min_bot_version": "3.4.0",
+  "max_bot_version": "0.0.0",
+  "min_python_version": [3, 8, 1],
+  "hidden": false,
+  "disabled": false,
+  "required_cogs": {},
+  "requirements": [
+    "aiohttp",
+    "rivercogutils",
+    "mwrogue",
+    "mwcleric"
+  ],
+  "tags": [
+    "mediawiki",
+    "lol"
+  ]
 }
