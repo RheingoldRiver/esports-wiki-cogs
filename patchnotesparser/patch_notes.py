@@ -384,10 +384,15 @@ class PatchNotes:
                         change.context = attribute_tag.text.strip()
 
                     elif "attribute" in attribute_tag["class"]:
+
+                        # handles simplified mid patch changes
+                        if change is None:
+                            border.simplified = True
+                                
                         attribute_info: str = Helper.capitalize(attribute_tag.text.strip())
 
                         # the current change reffers to a champion
-                        if any(x["name"] == change.name for x in Dragon.champions):
+                        if change is not None and any(x["name"] == change.name for x in Dragon.champions):
 
                             # attribute is from an ability
                             result = Helper.try_match_ability_name(attribute_info)
@@ -445,9 +450,9 @@ class PatchNotes:
                             # no fucking clue of what it is
                             else: raise ParserError(self, "Was not expecting any more champion "
                                                     f"attributes but found '{attribute_info}'.")
-
+                                
                         # the current change reffers to an item
-                        elif any(x["name"] == change.name for x in Dragon.items):
+                        elif change is not None and any(x["name"] == change.name for x in Dragon.items):
                             attribute = Pbc(attribute_info)
                             change.attributes.append(attribute)
                         
@@ -458,7 +463,7 @@ class PatchNotes:
                                 section.borders.append(border)
                             
                             # reuse existing border
-                            elif border.context != change.name:
+                            elif change is not None and border.context != change.name:
                                 border.context = change.name
                                 border.simplified = True
                                 border.changes = []
