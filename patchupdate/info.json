@@ -14,7 +14,8 @@
     "aiohttp",
     "git+git://github.com/RheingoldRiver/rivercogutils",
     "mwrogue",
-    "mwcleric"
+    "mwcleric",
+    "mwparserfromhell>=0.6"
   ],
   "tags": [
     "mediawiki",
