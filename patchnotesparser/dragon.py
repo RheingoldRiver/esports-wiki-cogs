@@ -1,7 +1,6 @@
 import requests as HttpClient
 from typing import Any
 import json as Json
-import re as Regex
 
 # links
 VERSIONS: str = "https://ddragon.leagueoflegends.com/api/versions.json"
@@ -29,36 +28,40 @@ class Dragon:
 
         # get champions from data dragon
         response = HttpClient.get(CHAMPIONS.format(latest_version))
-        data = Json.loads(response.text)["data"]
-        Dragon.champions = []
-        for champion_key in data:
-            Dragon.champions.append(data[champion_key])
+        if response.ok:
+            data = Json.loads(response.text)["data"]
+            Dragon.champions = []
+            for champion_key in data:
+                Dragon.champions.append(data[champion_key])
 
         # get items from data dragon
         response = HttpClient.get(ITEMS.format(latest_version))
-        data = Json.loads(response.text)["data"]
-        Dragon.items = []
-        for item_key in data:
-            Dragon.items.append(data[item_key])
+        if response.ok:
+            data = Json.loads(response.text)["data"]
+            Dragon.items = []
+            for item_key in data:
+                Dragon.items.append(data[item_key])
 
         # get summoner spells from data dragon
         response = HttpClient.get(SPELLS.format(latest_version))
-        data = Json.loads(response.text)["data"]
-        Dragon.spells = []
-        for spell_key in data:
-            Dragon.spells.append(data[spell_key])
+        if response.ok:
+            data = Json.loads(response.text)["data"]
+            Dragon.spells = []
+            for spell_key in data:
+                Dragon.spells.append(data[spell_key])
 
         # get runes from data dragon
         response = HttpClient.get(RUNES.format(latest_version))
-        data = Json.loads(response.text)
-        Dragon.runes = []
-        for group in data:
-            Dragon.runes.append(group)
+        if response.ok:
+            data = Json.loads(response.text)
+            Dragon.runes = []
+            for group in data:
+                Dragon.runes.append(group)
 
-            if group["slots"]:
-                for slot in group["slots"]:
-                    for rune in slot["runes"]:
-                        Dragon.runes.append(rune)
+                if group["slots"]:
+                    for slot in group["slots"]:
+                        for rune in slot["runes"]:
+                            Dragon.runes.append(rune)
 
         # set dragon current version
         Dragon.current_version = latest_version

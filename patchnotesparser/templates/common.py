@@ -1,5 +1,7 @@
 # static
-ONLY_INCLUDE: str = "<onlyinclude>"
+OPEN_ONLY_INCLUDE: str = "<onlyinclude>\n"
+CLOSE_ONLY_INCLUDE: str = "</onlyinclude>\n"
+CLEAR_ALL_TAG: str = '<br clear="all">\n'
 BOX_START: str = "{{Box|start}}\n"
 BOX_BREAK: str = "{{Box|break}}\n"
 BOX_END: str = "{{Box|end}}\n"

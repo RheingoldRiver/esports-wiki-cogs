@@ -18,7 +18,6 @@ import sys as System
 from river_mwclient.esports_client import EsportsClient
 from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
-from typing import Iterator
 
 RIOT_ADDRESS: str = "https://na.leagueoflegends.com/en-us/news/game-updates/patch-{}-notes"
 SUMMARY: str = "Auto-parse League of Legends patch notes."
@@ -54,7 +53,7 @@ class PatchNotes:
     def _print(self) -> None:
         # header
         result: str = PATCH_TABS_HEADER
-        result += ONLY_INCLUDE
+        result += OPEN_ONLY_INCLUDE
         result += BOX_START
 
         # context
@@ -133,6 +132,9 @@ class PatchNotes:
                 for change in border.changes:
                     result += change.print()
             result += NEW_LINE
+
+        result += CLOSE_ONLY_INCLUDE
+        result += CLEAR_ALL_TAG
         result += PATCH_LIST_NAVBOX
         
         # save to wiki
