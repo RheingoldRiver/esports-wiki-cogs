@@ -3,7 +3,7 @@ from bs4 import Tag
 import re as Regex
 
 
-EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL", "In-Game"]
+EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL", "In-Game", "Mid-Patch"]
 
 
 class Helper:

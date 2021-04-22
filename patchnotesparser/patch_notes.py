@@ -356,9 +356,7 @@ class PatchNotes:
             if border is None:
                 # border title is sometimes defined in an h2 tag
                 h2: 'Tag | None' = Filters.first_tag_by_name("h2", content_list)
-                if h2 is None:
-                    raise ParserError(self, "Could not locate the border title.")
-
+                if h2 is None: raise ParserError(self, "Could not locate the border title.")
                 border = Border(h2.text.strip())
                 section.borders.append(border)
 
@@ -373,6 +371,12 @@ class PatchNotes:
                 # simplified borders don't have changes
                 if not border.simplified:
                     border.changes.append(change)
+
+            elif content.name == "h4":
+                print(content)
+                # mid-patch changes might be a simple list
+                change = Pnb(content.text.strip())
+                print(change.name)
 
             # handles champion or item attribute change
             elif content.has_attr("class") and "attribute-change" in content["class"]:
