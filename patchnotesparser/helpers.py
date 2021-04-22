@@ -3,13 +3,13 @@ from bs4 import Tag
 import re as Regex
 
 
-EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL"]
+EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL", "In-Game"]
 
 
 class Helper:
     @staticmethod
     def capitalize(text: str) -> str:
-        words: 'list[str]' = Regex.split(r"( |-|\"|/)", text)
+        words: 'list[str]' = Regex.split(r"( |\"|/)", text)
         lowered_words: 'list[str]' = [word if word in EXCEPTIONS else word.lower() for word in words]
         final_words: 'list[str]' = [word if word in EXCEPTIONS else word.capitalize() for word in lowered_words]
         return "".join(final_words)
