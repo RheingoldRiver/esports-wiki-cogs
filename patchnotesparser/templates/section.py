@@ -5,21 +5,28 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from patchnotesparser.templates.border import Border
 
+
+# TODO: Add support for camps in TOC
+ALLOWED_TOC_TYPES: 'list[str]' = ["Champion", "Item", "Summoner", "Rune", "Mastery", "Stat"]
+
 class Section:
     """== {title} =="""
     
+    # TODO: Improve on how we detect champions and itens and what not for TOC
     def __init__(self, id: int, title: str) -> None:
         self.id: int = id
         self.title: str = title
         self.borders: 'list[Border]' = []
 
     def print_toc(self) -> str:
-        # TODO: Add support for camps in TOC
-        if any(word in self.title for word in ["Champion", "Item", "Rune", "Summoner"]):
+        if any(word in self.title for word in ALLOWED_TOC_TYPES):
             icons: str = ""
             result: str = f"\n|group{self.id}={self.title}\n"
             group_type: str = self.title.split(' ')[0]
             group_type = group_type if not group_type[-1] == "s" else group_type[:-1]
+            
+            if not any(word in group_type for word in ALLOWED_TOC_TYPES):
+                group_type = ""
 
             result += f"|group{self.id}types={group_type}\n"
             result += f"|group{self.id}images="
