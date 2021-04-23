@@ -51,6 +51,7 @@ class Pnb:
     def __init__(self, name: str = "",
                  new: bool = False,
                  removed: bool = False,
+                 updated: bool = False,
                  date: 'Date | None' = None) -> None:
         self.__name: str = ""
         self.name = name
@@ -58,6 +59,7 @@ class Pnb:
         self.context: str = ""
         self.summary: str = ""
         self.removed: bool = removed
+        self.updated: bool = updated
         self.changes: 'list[Pnb]' = []
         self.date: 'Date | None' = date
         self.abilities: 'list[Pai]' = []
@@ -83,6 +85,8 @@ class Pnb:
             result += "|ch=new"
         elif self.removed:
             result += "|ch=removed"
+        elif self.updated:
+            result += "|ch=updated"
         
         result += "|date=" + (str(self.date or ""))
         
