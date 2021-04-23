@@ -28,6 +28,8 @@ WIKI_PAGE: str = "User:Bruno_Blanes/Patch_{}"
 def ability_base_attributes() -> 'list[str]':
     return ["Cooldown",
             "First Hit Bonus Damage",
+            "Base Damage Per Snip",
+            "Final Snip Base Damage",
             "Damage",
             "Cost",
             "Move Speed",
@@ -178,19 +180,33 @@ class PatchNotes:
         inner_change: 'Pnb | None' = None
         new: bool = any("new" in x["class"] for x in Filters.tags_with_classes(content_list))
         removed: bool = any("removed" in x["class"] for x in Filters.tags_with_classes(content_list))
-        change: Pnb = Pnb(new=new, removed=removed, date=self.published_date)
+        updated: bool = any("updated" in x["class"] for x in Filters.tags_with_classes(content_list))
+        change: Pnb = Pnb(new=new, removed=removed, updated=updated, date=self.published_date)
 
         # loop through all the patch changes
         for content in Filters.tags(content_list):
-
             # sets the change title
             if content.has_attr("class") and "change-title" in content["class"]:
-                change.name = content.text.strip()
+
+                # sometimes the attribute is inline with the name
+                name: str = content.text.strip()
+                print(name)
+
+                if "new" in name:
+                    change.new = True
+                    change.name = name[name.index("new") + len("new"):].strip()
+                elif "updated" in name:
+                    change.updated = True
+                    change.name = name[name.index("updated") + len("updated"):].strip()
+                elif "removed" in name:
+                    change.removed = True
+                    change.name = name[name.index("removed") + len("removed"):].strip()
+                else:
+                    change.name = name
 
             # handles complex changes
             # see Xin Zhao on patch notes 11.6 for reference
-            elif not content.has_attr("class") and content.name == "h2":
-                
+            elif not content.has_attr("class") and content.name == "h2":                
                 # sometimes the group title will be a simple "h2" tag
                 # that doesn't mean this is a complex change
                 if not change.name or change.name.isspace():
@@ -356,8 +372,13 @@ class PatchNotes:
             if border is None:
                 # border title is sometimes defined in an h2 tag
                 h2: 'Tag | None' = Filters.first_tag_by_name("h2", content_list)
-                if h2 is None: raise ParserError(self, "Could not locate the border title.")
-                border = Border(h2.text.strip())
+
+                if h2 is None:
+                    h4: 'Tag | None' = Filters.first_tag_by_name("h4", content_list)
+                    if h4 is None: raise ParserError(self, "Could not locate the border title.")
+                    else: border = Border(h4.text.strip())
+                
+                else: border = Border(h2.text.strip())
                 section.borders.append(border)
 
             # border context text
@@ -373,10 +394,8 @@ class PatchNotes:
                     border.changes.append(change)
 
             elif content.name == "h4":
-                print(content)
                 # mid-patch changes might be a simple list
                 change = Pnb(content.text.strip())
-                print(change.name)
 
             # handles champion or item attribute change
             elif content.has_attr("class") and "attribute-change" in content["class"]:
@@ -494,6 +513,7 @@ class PatchNotes:
                 change = None
                 ability = None
 
+
     def parse_all(self, patch_version: str) -> 'PatchNotes':
         self.patch_version = patch_version
         self.patch_url = RIOT_ADDRESS.format(self.patch_version.replace('.', '-'))
@@ -610,6 +630,10 @@ class PatchNotes:
 
                 # handle pretty printed changes    
                 elif any("attribute-change" in x["class"] for x in Filters.tags_with_classes(content_list)):
+                    self._changes(border, section, content_list)
+
+                # handles new champions
+                elif any("new" in x["class"] for x in Filters.tags_with_classes(content_list)):
                     self._changes(border, section, content_list)
 
                 else:
