@@ -190,7 +190,6 @@ class PatchNotes:
 
                 # sometimes the attribute is inline with the name
                 name: str = content.text.strip()
-                print(name)
 
                 if "new" in name:
                     change.new = True
@@ -259,8 +258,15 @@ class PatchNotes:
             # attribute is from a champion ability
             elif content.has_attr("class") and "ability-title" in content["class"]:
                 ability_info: str = content.text.strip()
+                
+                # if the ability-title is actually the champion name 
+                if any(x["name"] == ability_info for x in Dragon.champions):
+                    border = Border()
+                    change = Pnb(ability_info)
+                    border.changes.append(change)
+                    section.borders.append(border)
 
-                if any(x["name"] == change.name for x in Dragon.champions):
+                elif any(x["name"] == change.name for x in Dragon.champions):
                     
                     # gets a substring that contains only the ability name
                     result = Helper.try_match_ability_name(ability_info)
@@ -348,12 +354,13 @@ class PatchNotes:
                         continue
 
                     # complex changes goes elsewhere
-                    change.complex_changes[-1].attributes.append(attribute)
+                    change.complex_changes[-1].attributes.append(attribute)                
 
         # for these, the border is empty
-        border = Border()
-        border.changes.append(change)
-        section.borders.append(border)
+        if border is None:
+            border = Border()
+            border.changes.append(change)
+            section.borders.append(border)
 
     def midpatch(self, border: 'Border | None', section: Section, content_list: 'list[Tag]') -> None:
         change: 'Pnb | None' = None

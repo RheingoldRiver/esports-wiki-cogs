@@ -13,7 +13,6 @@ from river_mwclient.esports_client import EsportsClient
 import rivercogutils as RiverCogUtils
 import re as Regex
 
-
 CURRENT_VERSION: str = "0.5.0"
             
 
