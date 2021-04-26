@@ -1,5 +1,5 @@
 from patchnotesparser.exceptions import ParserError, ParserHttpError, ParserTimeoutError
-from patchnotesparser.helpers import Helper, Filters
+from patchnotesparser.helpers import StringHelper, Filters
 from patchnotesparser.dragon import Dragon
 
 from patchnotesparser.templates.splash import SplashTableEntry
@@ -50,6 +50,7 @@ class PatchNotes:
         self.sections: 'list[Section]' = []
         self.published_date = DateTime.now()
         self.designers: 'list[Designer]' = []
+        self.stringHelper: StringHelper = StringHelper()
         
     def _print(self) -> None:
         # header
@@ -268,7 +269,7 @@ class PatchNotes:
                 elif any(x["name"] == change.name for x in Dragon.champions):
                     
                     # gets a substring that contains only the ability name
-                    result = Helper.try_match_ability_name(ability_info)
+                    result = self.stringHelper.try_match_ability_name(ability_info)
                     if result is None:
                         raise ParserError(self, f"Was not expecting ability name '{ability_info}'.")
                     
@@ -329,7 +330,7 @@ class PatchNotes:
                         ability_info: str = attribute_info.text.strip()
 
                         # gets a substring that contains only the ability name
-                        result = Helper.try_match_ability_name(ability_info)
+                        result = self.stringHelper.try_match_ability_name(ability_info)
                         if result is not None:
                             inner_ability = Pai(ability_info[result.span()[0] + len(result.group(0)):])
 
@@ -420,13 +421,13 @@ class PatchNotes:
                         if change is None:
                             border.simplified = True
                                 
-                        attribute_info: str = Helper.capitalize(attribute_tag.text.strip())
+                        attribute_info: str = self.stringHelper.capitalize(attribute_tag.text.strip())
 
                         # the current change reffers to a champion
                         if change is not None and any(x["name"] == change.name for x in Dragon.champions):
 
                             # attribute is from an ability
-                            result = Helper.try_match_ability_name(attribute_info)
+                            result = self.stringHelper.try_match_ability_name(attribute_info)
                             if result is not None:
 
                                 # get a substring that contains only the ability name and base attribute
@@ -554,7 +555,7 @@ class PatchNotes:
         # patch notes designers
         designer_elements: 'list[Tag]' = soup.find_all("span", {"class": "context-designer"})
         for designer_span in designer_elements:
-            designer = Designer(Helper.capitalize(designer_span.text.strip()))
+            designer = Designer(self.stringHelper.capitalize(designer_span.text.strip()))
             if designer.username is None:
                 raise ParserError(self, f"Could not extract username from `context-designer`.")
             if designer.icon is None:
@@ -583,7 +584,7 @@ class PatchNotes:
         for tag in container:            
             # section headers
             if "header-primary" in tag["class"]:
-                section = Section(section_id, Helper.capitalize(tag.text.strip()))
+                section = Section(section_id, self.stringHelper.capitalize(tag.text.strip()))
                 self.sections.append(section)
                 section_id += 1
                 border = None

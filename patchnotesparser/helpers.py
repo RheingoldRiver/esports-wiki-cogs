@@ -3,19 +3,16 @@ from bs4 import Tag
 import re as Regex
 
 
-EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL", "In-Game", "Mid-Patch"]
+class StringHelper:
+    EXCEPTIONS: 'list[str]' = ["and", "or", "the", "a", "of", "in", "ARAM", "DX11", "DX9", "QoL", "In-Game", "Mid-Patch"]
 
-
-class Helper:
-    @staticmethod
-    def capitalize(text: str) -> str:
+    def capitalize(self, text: str) -> str:
         words: 'list[str]' = Regex.split(r"( |\"|/)", text)
-        lowered_words: 'list[str]' = [word if word in EXCEPTIONS else word.lower() for word in words]
-        final_words: 'list[str]' = [word if word in EXCEPTIONS else word.capitalize() for word in lowered_words]
+        lowered_words: 'list[str]' = [word if word in self.EXCEPTIONS else word.lower() for word in words]
+        final_words: 'list[str]' = [word if word in self.EXCEPTIONS else word.capitalize() for word in lowered_words]
         return "".join(final_words)
 
-    @staticmethod
-    def try_match_ability_name(text: str) -> 'Regex.Match[str] | None':
+    def try_match_ability_name(self, text: str) -> 'Regex.Match[str] | None':
         return Regex.search(r"([QWER]|(PASSIVE))\s-\s", text, Regex.IGNORECASE)
 
 
