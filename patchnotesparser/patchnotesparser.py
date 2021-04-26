@@ -9,7 +9,6 @@ from redbot.core import commands
 from discord.guild import Guild
 from redbot.core.bot import Red
 
-from river_mwclient.esports_client import EsportsClient
 import rivercogutils as RiverCogUtils
 import re as Regex
 
@@ -161,7 +160,7 @@ class PatchNotesParser(commands.Cog):
             await ctx.send("Incorrect patch notes version number format.")
             return
         
-        site: 'EsportsClient' = await RiverCogUtils.login_if_possible(ctx, self.bot, 'lol')
+        site = await RiverCogUtils.login_if_possible(ctx, self.bot, 'lol')
 
         try:
             # parse

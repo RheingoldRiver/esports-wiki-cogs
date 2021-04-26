@@ -15,7 +15,6 @@ from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
 import sys as System
 
-from river_mwclient.esports_client import EsportsClient
 from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
 
@@ -42,11 +41,11 @@ def ability_base_attributes() -> 'list[str]':
 
 
 class PatchNotes:
-    def __init__(self, site: 'EsportsClient') -> None:
+    def __init__(self, site) -> None:
+        self.site = site
         self.context: str = ""
         self.page_url: str = ""
         self.patch_version: str = ""
-        self.site: 'EsportsClient' = site
         self.patch_url: 'str | None' = None
         self.sections: 'list[Section]' = []
         self.published_date = DateTime.now()
