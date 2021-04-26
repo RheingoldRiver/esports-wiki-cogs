@@ -5,14 +5,14 @@ from patchnotesparser.dragon import Dragon
 
 from redbot.core.commands import GuildContext
 from redbot.core.utils.tunnel import Tunnel
-from redbot.core import commands
-from discord.guild import Guild
+from redbot.core import commands, Config
 from redbot.core.bot import Red
 
+from discord.guild import Guild, TextChannel
 import rivercogutils as RiverCogUtils
 import re as Regex
 
-CURRENT_VERSION: str = "0.5.0"
+CURRENT_VERSION: str = "0.8.0"
             
 
 class PatchNotesParser(commands.Cog):
@@ -21,30 +21,47 @@ class PatchNotesParser(commands.Cog):
     def __init__(self, bot: 'Red') -> None:
         self.bot: 'Red' = bot
         self.patch_notes: 'PatchNotes | None' = None
+        self.bug_fix_channel: 'TextChannel | None' = None
+        self.config: Config = Config.get_conf(self, identifier=5527993091442, force_registration=True)
+        self._register_config()
+
+    # register all the config variables
+    def _register_config(self) -> None:
+        self.config.register_global(bug_fix_channel = None)
+        self.config.register_global(patch_notes = None)
+
+    # try to set the bug report channel
+    async def _try_set_bug_report_channel(self, guild: Guild) -> bool:
+        for channel in guild.text_channels:
+            if channel.id == await self.config.bug_fix_channel():
+                self.bug_fix_channel = channel
+                return True
+        return False
         
-        guild: 'Guild | None' = bot.get_guild(529775376721903617)
-        if guild is not None:
-            for channel in guild.text_channels:
-                if channel.name == "feature-bug-disc":
-                    self.bug_fix_channel = channel
-                    break
-    
     async def _auto_report(self, ctx: GuildContext, message: str, patch_notes: PatchNotes) -> None:
         # TODO: remove embeded patch notes info
-        await Tunnel.message_forwarder(destination=self.bug_fix_channel,
-                                       content="Patch notes parser **auto report** from command "
-                                       f"`{ctx.message.system_content}` executed at "
-                                       f"*{ctx.guild.name} - #{ctx.channel.name}:*\n"
-                                       f"https://discord.com/channels/{ctx.guild.id}/"
-                                       f"{ctx.channel.id}/{ctx.message.id}\n"
-                                       f"```fix\n{message}\n```"
-                                       "\n**Additional information**\n"
-                                       f"Patch notes: {patch_notes.patch_url}\n```python\n"
-                                       f"Cog version: {CURRENT_VERSION}\n"
-                                       f"Data Dragon version: {Dragon.current_version}\n```")
-        await ctx.send("Something went wrong and I could not parse.\n"
-                       "An automatic error report was generated and "
-                       "someone will look into it.")
+        content: str = "Patch notes parser **auto report** from command " \
+                    f"`{ctx.message.system_content}` executed at " \
+                    f"*{ctx.guild.name} - #{ctx.channel.name}:*\n" \
+                    f"https://discord.com/channels/{ctx.guild.id}/" \
+                    f"{ctx.channel.id}/{ctx.message.id}\n" \
+                    f"```fix\n{message}\n```" \
+                    "\n**Additional information**\n" \
+                    f"Patch notes: {patch_notes.patch_url}\n```python\n" \
+                    f"Cog version: {CURRENT_VERSION}\n" \
+                    f"Data Dragon version: {Dragon.current_version}\n```"
+        
+        # check if the channel is loaded from the configuration
+        if await self._try_set_bug_report_channel(ctx.guild) and self.bug_fix_channel is not None:
+            await Tunnel.message_forwarder(destination=self.bug_fix_channel, content=content)
+            await ctx.send("Something went wrong and I could not parse.\n"
+                           "An automatic error report was generated and "
+                           "someone will look into it.")
+        else:
+            await ctx.send("Could not send auto generated report to the default bug fix channel.\n"
+                           "Please verify that you have set the default channel by running `^pnparser get bugreportchannel`.\n"
+                           f"\n\nThe error report is as follows: \n {content}")
+
 
     def _validate_patch(self, patch_version: str) -> bool:
         if Regex.search(r'^\s*[1-9]{1,2}(\.|,|-)[1-9]{1,2}\s*$', patch_version):
@@ -57,6 +74,31 @@ class PatchNotesParser(commands.Cog):
         """A League of Legends patch notes parser"""
         pass
 
+    @pnparser.group()
+    async def set(self, ctx: GuildContext) -> None:
+        """Set COG settings"""
+        pass
+
+    @set.command(name="bugreportchannel")
+    async def set_bug_report_channel(self, ctx: GuildContext, channel_id: int) -> None:
+        """Sets the default bug fix channel for error reports"""
+
+        if channel_id > 0:
+            await self.config.bug_fix_channel.set(channel_id)         
+            await ctx.send("Channel set for auto generated bug reports.")
+        else:
+            await ctx.send("Invalid channel guild id.")
+
+    @pnparser.group()
+    async def get(self, ctx:GuildContext) -> None:
+        """Get COG settings"""
+        pass
+
+    @get.command(name="bugreportchannel")
+    async def get_bug_report_channel(self, ctx: GuildContext) -> None:
+        """Gets the default bug fix channel for error reports"""
+        await ctx.send(await self.config.bug_fix_channel())
+
     @pnparser.command()
     async def version(self, ctx: GuildContext) -> None:
         """Show package information"""
@@ -65,19 +107,26 @@ class PatchNotesParser(commands.Cog):
     @pnparser.command()
     async def report(self, ctx: GuildContext, *message: str) -> None:
         """Report parser issues"""
-        await Tunnel.message_forwarder(destination=self.bug_fix_channel,
-                                       content="Patch notes parser error reported by "
-                                       f"**{ctx.author.display_name}** in "
-                                       f"*{ctx.guild.name} - #{ctx.channel.name}:*\n"
-                                       f"https://discord.com/channels/{ctx.guild.id}/"
-                                       f"{ctx.channel.id}/{ctx.message.id}\n{' '.join(message)}\n"
-                                       "\n**Additional information**\n"
-                                       f"Patch notes: {self.patch_notes.patch_url}\n```python\n"
-                                       f"Cog version: {CURRENT_VERSION}\n"
-                                       f"Data Dragon version: {Dragon.current_version}\n```")
-        await ctx.send("Thank you for reporting this issue.\n"
-                       "Someone will look into it and might get in touch "
-                       "to let you know when it is fixed.")
+        # TODO: remove embeded patch notes info
+        content: str = "Patch notes parser error reported by " \
+                    f"**{ctx.author.display_name}** in " \
+                    f"*{ctx.guild.name} - #{ctx.channel.name}:*\n" \
+                    f"https://discord.com/channels/{ctx.guild.id}/" \
+                    f"{ctx.channel.id}/{ctx.message.id}\n{' '.join(message)}\n" \
+                    "\n**Additional information**\n" \
+                    f"Patch notes: {self.patch_notes.patch_url}\n```python\n" \
+                    f"Cog version: {CURRENT_VERSION}\n" \
+                    f"Data Dragon version: {Dragon.current_version}\n```"
+                    
+        if await self._try_set_bug_report_channel(ctx.guild) and self.bug_fix_channel is not None:
+            await Tunnel.message_forwarder(destination=self.bug_fix_channel, content=content)
+            await ctx.send("Thank you for reporting this issue.\n"
+                            "Someone will look into it and might get in touch "
+                            "to let you know when it is fixed.")
+        else:
+            await ctx.send("Could not send report to the default bug fix channel.\n"
+                           "Please verify that you have set the default channel by running `^pnparser get bugreportchannel`.\n"
+                           f"\n\nThe error report is as follows: \n {content}")
 
     @pnparser.command()
     async def reparse(self, ctx: GuildContext) -> None:
