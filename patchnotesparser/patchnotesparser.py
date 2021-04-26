@@ -69,6 +69,10 @@ class PatchNotesParser(commands.Cog):
             return True
         return False
 
+    async def _set_patch_version(self, patch_version: str) -> None:
+        await self.config.patch_notes.set(patch_version)
+        self.patch_version = await self.config.patch_notes()
+
     @commands.group()
     async def pnparser(self, ctx: GuildContext) -> None:
         """A League of Legends patch notes parser"""
@@ -136,7 +140,7 @@ class PatchNotesParser(commands.Cog):
 
 
     @pnparser.group()
-    async def get(self, ctx:GuildContext) -> None:
+    async def get(self, ctx: GuildContext) -> None:
         """Get COG settings"""
         pass
 
@@ -145,6 +149,9 @@ class PatchNotesParser(commands.Cog):
         """Gets the default bug fix channel for error reports"""
         await ctx.send(f"Current bug report channel id is `{await self.config.bug_fix_channel()}`.")
 
+    @get.command()
+    async def patchversion(self, ctx: GuildContext) -> None:
+        await ctx.send(f"Current patch notes version is `{await self.config.patch_notes()}`.")
 
     @pnparser.group()
     async def designer(self, ctx: GuildContext) -> None:
@@ -224,6 +231,7 @@ class PatchNotesParser(commands.Cog):
             # parse
             await ctx.send("Parsing...")
             self.patch_notes = PatchNotes(site).parse_all(patch_version)
+            await self._set_patch_version(self.patch_notes.patch_version)
 
             # parsing complete
             await ctx.send("Patch notes parsed successfully.\n"
