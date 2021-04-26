@@ -84,8 +84,12 @@ class PatchNotesParser(commands.Cog):
         """Sets the default bug fix channel for error reports"""
 
         if channel_id > 0:
-            await self.config.bug_fix_channel.set(channel_id)         
-            await ctx.send("Channel set for auto generated bug reports.")
+            await self.config.bug_fix_channel.set(channel_id)
+            if await self._try_set_bug_report_channel(ctx.guild):
+                await ctx.send("Channel set for auto generated bug reports.")
+            else:
+                await ctx.send("Could not set the default bug report channel. Please verify the provided id.")
+                await self.config.bug_fix_channel.set(None)
         else:
             await ctx.send("Invalid channel guild id.")
 
@@ -97,7 +101,7 @@ class PatchNotesParser(commands.Cog):
     @get.command(name="bugreportchannel")
     async def get_bug_report_channel(self, ctx: GuildContext) -> None:
         """Gets the default bug fix channel for error reports"""
-        await ctx.send(await self.config.bug_fix_channel())
+        await ctx.send(f"Current bug report channel id is `{await self.config.bug_fix_channel()}`.")
 
     @pnparser.command()
     async def version(self, ctx: GuildContext) -> None:
