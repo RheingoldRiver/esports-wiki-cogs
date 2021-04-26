@@ -74,35 +74,6 @@ class PatchNotesParser(commands.Cog):
         """A League of Legends patch notes parser"""
         pass
 
-    @pnparser.group()
-    async def set(self, ctx: GuildContext) -> None:
-        """Set COG settings"""
-        pass
-
-    @set.command(name="bugreportchannel")
-    async def set_bug_report_channel(self, ctx: GuildContext, channel_id: int) -> None:
-        """Sets the default bug fix channel for error reports"""
-
-        if channel_id > 0:
-            await self.config.bug_fix_channel.set(channel_id)
-            if await self._try_set_bug_report_channel(ctx.guild):
-                await ctx.send("Channel set for auto generated bug reports.")
-            else:
-                await ctx.send("Could not set the default bug report channel. Please verify the provided id.")
-                await self.config.bug_fix_channel.set(None)
-        else:
-            await ctx.send("Invalid channel guild id.")
-
-    @pnparser.group()
-    async def get(self, ctx:GuildContext) -> None:
-        """Get COG settings"""
-        pass
-
-    @get.command(name="bugreportchannel")
-    async def get_bug_report_channel(self, ctx: GuildContext) -> None:
-        """Gets the default bug fix channel for error reports"""
-        await ctx.send(f"Current bug report channel id is `{await self.config.bug_fix_channel()}`.")
-
     @pnparser.command()
     async def version(self, ctx: GuildContext) -> None:
         """Show package information"""
@@ -143,6 +114,38 @@ class PatchNotesParser(commands.Cog):
         await ctx.send(f"Reparsing patch notes version `{self.patch_notes.patch_version}`.")
         await self.all(ctx, self.patch_notes.patch_version)
 
+
+    @pnparser.group()
+    async def set(self, ctx: GuildContext) -> None:
+        """Set COG settings"""
+        pass
+
+    @set.command(name="bugreportchannel")
+    async def set_bug_report_channel(self, ctx: GuildContext, channel_id: int) -> None:
+        """Sets the default bug fix channel for error reports"""
+
+        if channel_id > 0:
+            await self.config.bug_fix_channel.set(channel_id)
+            if await self._try_set_bug_report_channel(ctx.guild):
+                await ctx.send("Channel set for auto generated bug reports.")
+            else:
+                await ctx.send("Could not set the default bug report channel. Please verify the provided id.")
+                await self.config.bug_fix_channel.set(None)
+        else:
+            await ctx.send("Invalid channel guild id.")
+
+
+    @pnparser.group()
+    async def get(self, ctx:GuildContext) -> None:
+        """Get COG settings"""
+        pass
+
+    @get.command(name="bugreportchannel")
+    async def get_bug_report_channel(self, ctx: GuildContext) -> None:
+        """Gets the default bug fix channel for error reports"""
+        await ctx.send(f"Current bug report channel id is `{await self.config.bug_fix_channel()}`.")
+
+
     @pnparser.group()
     async def designer(self, ctx: GuildContext) -> None:
         """Commands to get information related to patch notes designers"""
@@ -168,12 +171,13 @@ class PatchNotesParser(commands.Cog):
     #    Designer.add_designer(designer_name, designer_icon)
     #    await ctx.send(f"Designer {designer_name} added successfully.")
 
+
     @pnparser.group()
     async def dragon(self, ctx: GuildContext) -> None:
         """Commands to get information related to dragon"""
         pass
 
-    @dragon.command("version")
+    @dragon.command(name="version")
     async def dragon_version(self, ctx: GuildContext) -> None:
         """Get the current version number"""
         await ctx.send(f"Current version of dragon is `{Dragon.current_version}`.")
@@ -188,6 +192,7 @@ class PatchNotesParser(commands.Cog):
         if current_version == Dragon.current_version:
             await ctx.send(f"Already up to date, latest version is `{current_version}`.")
         else: await ctx.send(f"Updated dragon to version `{Dragon.current_version}`.")
+
 
     @pnparser.group()
     async def parse(self, ctx: GuildContext) -> None:
