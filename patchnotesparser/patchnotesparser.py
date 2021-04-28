@@ -22,7 +22,7 @@ class PatchNotesParser(commands.Cog):
         self.bot: 'Red' = bot
         self.patch_notes: 'PatchNotes | None' = None
         self.bug_fix_channel: 'TextChannel | None' = None
-        self.config: Config = Config.get_conf(self, identifier=5527993091442, force_registration=True)
+        self.config: Config = Config.get_conf(self, identifier=140177758872403968, force_registration=True)
         self._register_config()
 
     # register all the config variables
@@ -235,9 +235,8 @@ class PatchNotesParser(commands.Cog):
 
             # parsing complete
             await ctx.send("Patch notes parsed successfully.\n"
-                        f"See at: https://lol.gamepedia.com/{self.patch_notes.page_url}\n\n"
-                        "To report issues with the parser use "
-                        "`^pnparser report <message>`.")
+                        f"See at: https://lol.fandom.com/wiki/{self.patch_notes.page_url}\n\n"
+                        "To report issues with the parser use `[p]pnparser report <message>`.")
 
         except ParserHttpError as e:
             pass
