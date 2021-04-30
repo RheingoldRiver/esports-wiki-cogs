@@ -1,0 +1,16 @@
+{
+	"author": [
+		"Bruno Blanes"
+	],
+	"name": "PatchNotesParser",
+	"description": "A set of useful commands for parsing League of Legends patch notes.",
+	"short": "A League of Legends patch notes parser.",
+	"install_msg": "Thanks for installing PatchNotesParser! XD\n\nThis COG stores a JSON file called `designer_icons.json`.\nIt also requires the following libraries to work: `bs4, typing, requests, rivercogutils` (https://github.com/RheingoldRiver/rivercogutils).\nIt does a few GET requests to https://leagueoflegends.com and https://ddragon.leagueoflegends.com to get all the data needed for parsing.\n\nPlease do set the default bug report channel by using `[p]pnparser set bugreportchannel <channel_id>`.\nTo parse use `[p]pnparser parse all <patch_notes_version>` or type `[p]pnparser help` to see all available commands.",
+	"requirements": [
+		"bs4",
+		"typing",
+		"mwrogue",
+		"requests",
+		"git+git://github.com/RheingoldRiver/rivercogutils"
+	]
+}
