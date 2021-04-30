@@ -8,6 +8,7 @@ from redbot.core.utils.tunnel import Tunnel
 from redbot.core import commands, Config
 from redbot.core.bot import Red
 
+from mwrogue.esports_client import EsportsClient
 from discord.guild import Guild, TextChannel
 import rivercogutils as RiverCogUtils
 import re as Regex
@@ -18,8 +19,9 @@ CURRENT_VERSION: str = "0.8.0"
 class PatchNotesParser(commands.Cog):
     """Parses League of Legends patch notes to Wiki format"""
 
-    def __init__(self, bot: 'Red') -> None:
-        self.bot: 'Red' = bot
+    def __init__(self, bot: Red) -> None:
+        self.bot: Red = bot
+        self.site: 'EsportsClient | None' = None
         self.patch_notes: 'PatchNotes | None' = None
         self.bug_fix_channel: 'TextChannel | None' = None
         self.config: Config = Config.get_conf(self, identifier=140177758872403968, force_registration=True)
@@ -29,6 +31,9 @@ class PatchNotesParser(commands.Cog):
     def _register_config(self) -> None:
         self.config.register_global(bug_fix_channel = None)
         self.config.register_global(patch_notes = None)
+
+    async def _login_to_wiki(self, ctx: GuildContext) -> None:
+        self.site: 'EsportsClient | None' = await RiverCogUtils.login_if_possible(ctx, self.bot, "lol")
 
     # try to set the bug report channel
     async def _try_set_bug_report_channel(self, guild: Guild) -> bool:
@@ -224,13 +229,15 @@ class PatchNotesParser(commands.Cog):
         if not self._validate_patch(patch_version):
             await ctx.send("Incorrect patch notes version number format.")
             return
-        
-        site = await RiverCogUtils.login_if_possible(ctx, self.bot, 'lol')
 
         try:
             # parse
             await ctx.send("Parsing...")
-            self.patch_notes = PatchNotes(site).parse_all(patch_version)
+
+            if self.site is None:
+                await self._login_to_wiki(ctx)
+            
+            self.patch_notes = PatchNotes(self.site).parse_all(patch_version)
             await self._set_patch_version(self.patch_notes.patch_version)
 
             # parsing complete

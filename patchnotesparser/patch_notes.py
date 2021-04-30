@@ -1,5 +1,5 @@
-from patchnotesparser.exceptions import ParserError, ParserHttpError, ParserTimeoutError
-from patchnotesparser.helpers import StringHelper, Filters
+from patchnotesparser.exceptions import ParserError, ParserHttpError, ParserTimeoutError, ParserFileError
+from patchnotesparser.helpers import StringHelper, ImageHelper, Filters
 from patchnotesparser.dragon import Dragon
 
 from patchnotesparser.templates.splash import SplashTableEntry
@@ -15,6 +15,7 @@ from dateutil import parser as DatetimeParser
 from datetime import datetime as DateTime
 import sys as System
 
+from mwrogue.esports_client import EsportsClient
 from bs4 import BeautifulSoup, Tag
 import requests as HttpClient
 
@@ -41,8 +42,7 @@ def ability_base_attributes() -> 'list[str]':
 
 
 class PatchNotes:
-    def __init__(self, site) -> None:
-        self.site = site
+    def __init__(self, site: 'EsportsClient | None') -> None:
         self.context: str = ""
         self.page_url: str = ""
         self.patch_version: str = ""
@@ -50,6 +50,7 @@ class PatchNotes:
         self.sections: 'list[Section]' = []
         self.published_date = DateTime.now()
         self.designers: 'list[Designer]' = []
+        self.site: 'EsportsClient | None' = site
         self.stringHelper: StringHelper = StringHelper()
         
     def _print(self) -> None:
@@ -613,6 +614,19 @@ class PatchNotes:
                         border_context = list(filter(lambda tag: tag.name == "div", content_list))
                         if len(border_context) > 0:
                             border.context = border_context[-1].p.text.strip()
+
+                    # handle patch highlights image
+                    span: 'Tag | None' = Filters.first_tag_by_name("span", content_list)
+                    image_name: str = f"Patch_{self.patch_version}_Banner.jpg"
+
+                    if span is not None:
+                        image = ImageHelper(image_name)
+                        
+                        if image.download(span.a.img["src"]):
+                            if not image.upload(self.site, image_name, "== Licensing ==\n{{EsportsFairuse}}", SUMMARY):
+                                raise ParserFileError(self, f"Could not upload patch highlights image file: {image_name}.")
+                        else: raise ParserFileError(self, f"Could not download patch highlights image file from address: {image.url}.")
+                    else: raise ParserFileError(self, "Could not locate patch highlights <span>.")
                     section.borders.append(border)
 
                 # handles ARAM changes

@@ -9,6 +9,7 @@
 	"requirements": [
 		"bs4",
 		"typing",
+		"mwrogue",
 		"requests",
 		"git+git://github.com/RheingoldRiver/rivercogutils"
 	]
