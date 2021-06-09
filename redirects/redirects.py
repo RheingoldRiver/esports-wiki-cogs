@@ -1,7 +1,7 @@
 from redbot.core import commands
 import rivercogutils as utils
 import mwparserfromhell, re
-from river_mwclient.esports_client import EsportsClient
+from mwrogue.esports_client import EsportsClient
 
 
 class Redirects(commands.Cog):

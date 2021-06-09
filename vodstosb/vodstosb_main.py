@@ -1,7 +1,7 @@
 import mwparserfromhell
 from mwclient.errors import AssertUserFailedError
-from river_mwclient.auth_credentials import AuthCredentials
-from river_mwclient.esports_client import EsportsClient
+from mwrogue.auth_credentials import AuthCredentials
+from mwrogue.esports_client import EsportsClient
 
 
 class VodsToSbRunner(object):
