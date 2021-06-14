@@ -3,7 +3,7 @@ import json
 import requests
 from redbot.core import commands
 from redbot.core.utils.chat_formatting import text_to_file
-from river_mwclient.wiki_time_parser import time_from_str
+from mwrogue.wiki_time_parser import time_from_str
 
 # links
 SCHEDULE = "https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&leagueId={}"
