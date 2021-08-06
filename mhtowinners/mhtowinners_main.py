@@ -1,8 +1,7 @@
-from mwrogue.esports_client import EsportsClient
-from mwrogue.auth_credentials import AuthCredentials
 import lol_esports_parser
 import mwparserfromhell
-import logging
+from mwrogue.auth_credentials import AuthCredentials
+from mwrogue.esports_client import EsportsClient
 
 
 def tl_has(tl, param):
@@ -20,7 +19,6 @@ class MhToWinnersRunner(object):
             join_on="MSG.UniqueMatch=MS.UniqueMatch",
             where="(MSG.Blue IS NULL OR MSG.Red IS NULL OR MSG.Winner IS NULL) AND MSG.MatchHistory Like \"%leagueoflegends%\"",
             fields="MSG._pageName=Page,MSG.OverviewPage=OverviewPage",
-            limit='max',
             order_by="MS.DateTime_UTC DESC",
             group_by="MSG._pageName"
         )
@@ -53,21 +51,21 @@ class MhToWinnersRunner(object):
                 template.get('mh').value.strip()
             )
             # print(mh_url)
-            game = lol_esports_parser.get_riot_game(mh_url, add_names=False)
-            blue = game["teams"]["BLUE"]['name']
-            red = game["teams"]["RED"]['name']
+            game = lol_esports_parser.get_riot_game(mh_url)
+            blue = getattr(game.teams.BLUE.sources, 'inferred_name', None)
+            red = getattr(game.teams.BLUE.sources, 'inferred_name', None)
             blue_team = self.site.cache.get_team_from_event_tricode(overview_page, blue)
             red_team = self.site.cache.get_team_from_event_tricode(overview_page, red)
             if blue_team is not None and red_team is not None:
                 template.add('blue', blue_team)
                 template.add('red', red_team)
-                if game["winner"] == "BLUE":
+                if game.winner == "BLUE":
                     template.add('winner', "1")
-                elif game["winner"] == "RED":
+                elif game.winner == "RED":
                     template.add('winner', "2")
 
 
 if __name__ == '__main__':
     credentials = AuthCredentials(user_file='me')
-    site = EsportsClient('lol', credentials=credentials)  # Set wiki
-    MhToWinnersRunner(site).run()
+    lol_site = EsportsClient('lol', credentials=credentials)  # Set wiki
+    MhToWinnersRunner(lol_site).run()
