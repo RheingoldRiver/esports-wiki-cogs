@@ -53,7 +53,7 @@ class MhToWinnersRunner(object):
             # print(mh_url)
             game = lol_esports_parser.get_riot_game(mh_url)
             blue = getattr(game.teams.BLUE.sources, 'inferred_name', None)
-            red = getattr(game.teams.BLUE.sources, 'inferred_name', None)
+            red = getattr(game.teams.RED.sources, 'inferred_name', None)
             blue_team = self.site.cache.get_team_from_event_tricode(overview_page, blue)
             red_team = self.site.cache.get_team_from_event_tricode(overview_page, red)
             if blue_team is not None and red_team is not None:
