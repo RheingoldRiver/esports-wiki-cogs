@@ -13,7 +13,7 @@ class FnCheckResults(commands.Cog):
         
     @commands.command(pass_context=True)
     async def fncheckresults(self, ctx, *, title):
-        site = await utils.login_if_possible(ctx, self.bot, 'fortnite')
+        site = await utils.login_if_possible(ctx, self.bot, 'fortnite-esports')
         await ctx.send('Okay, starting!')
         result = check_results(site, title)
         if len(result) == 0:
