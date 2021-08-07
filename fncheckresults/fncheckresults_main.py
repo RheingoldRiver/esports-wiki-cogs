@@ -26,7 +26,7 @@ def check_results(site: EsportsClient, title):
 
 if __name__ == '__main__':
     credentials = AuthCredentials(user_file="me")
-    fn_site = EsportsClient('fortnite', credentials=credentials)
+    fn_site = EsportsClient('fortnite-esports', credentials=credentials)
     final_result = check_results(fn_site, "Fortnite Champion Series: Chapter 2 Season 4/Heat 3/Europe")
     print(final_result)
     print(len(final_result))
