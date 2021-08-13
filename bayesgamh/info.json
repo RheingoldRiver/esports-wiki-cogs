@@ -1,0 +1,17 @@
+{
+  "author": ["Aradia Megido#2552"],
+  "description": "Allow access to the Bayes GAMH API via Discord",
+  "end_user_data_statement": "No personal data is stored.",
+  "install_msg": "Use [p]mhtool to get started",
+  "short": "Bayes GAMH",
+  "min_bot_version": "3.4.0",
+  "max_bot_version": "0.0.0",
+  "min_python_version": [3, 8, 1],
+  "hidden": false,
+  "disabled": false,
+  "required_cogs": {
+    "globaladmin": "https://github.com/TsubakiBotPad/misc-cogs"
+  },
+  "requirements": ["aiohttp", "python-dateutil", "tsutils"],
+  "tags": []
+}
