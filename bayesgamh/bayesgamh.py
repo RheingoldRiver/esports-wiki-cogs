@@ -200,7 +200,7 @@ class BayesGAMH(commands.Cog):
             (await self.api.get_asset(game_id, asset)).decode('utf-8'),  # TODO: Send PR to red to allow bytes
             filename=asset + '.json'))
 
-    @mhtool.group(name='subscription')
+    @mhtool.group(name='subscription', aliases=['subscriptions', 'subscribe'])
     async def mh_subscription(self, ctx):
         """Subscribe to a tag"""
 
