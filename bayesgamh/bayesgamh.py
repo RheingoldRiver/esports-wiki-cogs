@@ -213,7 +213,7 @@ class BayesGAMH(commands.Cog):
             if await is_admin(ctx) and tag not in await self.api.get_tags():
                 if not await get_user_confirmation(ctx, f"Are you sure you want to subscribe"
                                                         f" to currently non-existant tag `{tag}`?"):
-                    return ctx.react_quietly("\N{CROSS MARK}")
+                    return await ctx.react_quietly("\N{CROSS MARK}")
             elif not await is_admin(ctx) and tag not in await self.config.user(ctx.author).allowed_tags():
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
                                                             f" have permission to view it.  Contact a bot admin"
@@ -244,8 +244,9 @@ class BayesGAMH(commands.Cog):
     @mh_subscription.command(name='clear', aliases=['purge'])
     async def mh_s_clear(self, ctx):
         if not await get_user_confirmation(ctx, "Are you sure you want to clear all of your subscriptions?"):
-            return
+            return await ctx.react_quietly("\N{CROSS MARK}")
         await self.config.user(ctx.author).subscriptions.set([])
+        await ctx.tick()
 
     async def format_game(self, game: Game, user: User) -> str:
         return (f"{game['name']} - ID: `{game['platformGameId']}` ({game['status']})\n"
