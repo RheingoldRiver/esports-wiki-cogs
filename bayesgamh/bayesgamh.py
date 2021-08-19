@@ -241,6 +241,12 @@ class BayesGAMH(commands.Cog):
             return await ctx.send("You are not subscribed to any tags.")
         await ctx.send(f"You are subscribed to the following tags: {', '.join(map(inline, subs))}")
 
+    @mh_subscription.command(name='clear', aliases=['purge'])
+    async def mh_s_clear(self, ctx):
+        if not await get_user_confirmation(ctx, "Are you sure you want to clear all of your subscriptions?"):
+            return
+        await self.config.user(ctx.author).subscriptions.set([])
+
     async def format_game(self, game: Game, user: User) -> str:
         return (f"{game['name']} - ID: `{game['platformGameId']}` ({game['status']})\n"
                 f"\tStart Time: {(await self.parse_date(game['createdAt'], user)).strftime('%X %Z on %A %B %d, %Y')}\n"
