@@ -2,7 +2,7 @@
   "author": ["Aradia Megido#2552"],
   "description": "Allow access to the Bayes GAMH API via Discord",
   "end_user_data_statement": "This cog stores your subscriptions to specific tags.",
-  "install_msg": "Use [p]mhtool to get started",
+  "install_msg": "For usage information, see https://lol.fandom.com/wiki/Help:Match_History_Tool",
   "short": "Bayes GAMH",
   "min_bot_version": "3.4.0",
   "max_bot_version": "0.0.0",
