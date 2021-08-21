@@ -19,9 +19,11 @@ from bayesgamh.bayes_api_wrapper import BayesAPIWrapper, Game
 logger = logging.getLogger('red.esports-wiki-cogs.bayesgahm')
 
 
-async def is_admin(ctx) -> bool:
+async def is_editor(ctx) -> bool:
     SELFCOG = ctx.bot.get_cog("BayesGAMH")
-    return ctx.author.id in ctx.bot.owner_ids or await SELFCOG.config.user(ctx.author).admin()
+    return (ctx.author.id in ctx.bot.owner_ids
+            or await SELFCOG.config.user(ctx.author).admin()
+            or await SELFCOG.config.user(ctx.author).allowed_tags())
 
 
 class BayesGAMH(commands.Cog):
