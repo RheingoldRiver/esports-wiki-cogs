@@ -9,19 +9,23 @@ import discord
 import pytz
 from dateutil.parser import isoparse
 from discord import User
-from redbot.core import Config, checks, commands
+from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import inline, pagify, text_to_file
-from tsutils import get_user_confirmation, repeating_timer, send_cancellation_message
+from tsutils.cogs.globaladmin import auth_check, has_perm
+from tsutils.helper_functions import repeating_timer
+from tsutils.user_interaction import get_user_confirmation, send_cancellation_message
 
 from bayesgamh.bayes_api_wrapper import BayesAPIWrapper, Game
 
 logger = logging.getLogger('red.esports-wiki-cogs.bayesgahm')
 
 
-async def is_admin(ctx) -> bool:
-    SELFCOG = ctx.bot.get_cog("BayesGAMH")
-    return ctx.author.id in ctx.bot.owner_ids or await SELFCOG.config.user(ctx.author).admin()
+async def is_editor(ctx) -> bool:
+    GAMHCOG = ctx.bot.get_cog("BayesGAMH")
+    return (ctx.author.id in ctx.bot.owner_ids
+            or has_perm('mhadmin', ctx.author, ctx.bot)
+            or await GAMHCOG.config.user(ctx.author).allowed_tags())
 
 
 class BayesGAMH(commands.Cog):
@@ -32,12 +36,16 @@ class BayesGAMH(commands.Cog):
         self.session = aiohttp.ClientSession()
         self.config = Config.get_conf(self, identifier=847356477)
         self.config.register_global(seen=[])
-        self.config.register_user(admin=False, allowed_tags=[], subscriptions=[])
+        self.config.register_user(allowed_tags=[], subscriptions=[])
 
         self.api = BayesAPIWrapper(bot, self.session)
 
         self._loop = bot.loop.create_task(self.do_loop())
         self.subscription_lock = asyncio.Lock()
+
+        gadmin: Any = self.bot.get_cog("GlobalAdmin")
+        if gadmin:
+            gadmin.register_perm('mhadmin')
 
     async def red_get_data_for_user(self, *, user_id):
         """Get a user's personal data."""
@@ -84,31 +92,12 @@ class BayesGAMH(commands.Cog):
     async def mhtool(self, ctx):
         """A subcommand for all Bayes GAMH commands"""
 
-    @mhtool.group(name='admin')
-    @commands.check(is_admin)
-    async def mh_admin(self, ctx):
-        """Administration commands"""
-
-    @mh_admin.command(name='add')
-    @checks.is_owner()
-    async def mh_a_add(self, ctx, user: discord.User):
-        """Grant GAMH admin priveleges to a user"""
-        await self.config.user(user).admin.set(True)
-        await ctx.tick()
-
-    @mh_admin.command(name='remove', aliases=['rm', 'delete', 'del'])
-    @checks.is_owner()
-    async def mh_a_remove(self, ctx, user: discord.User):
-        """Remove GAMH admin priveleges from a user"""
-        await self.config.user(user).admin.set(False)
-        await ctx.tick()
-
-    @mh_admin.group(name='tag', aliases=['tags'])
-    async def mh_a_tag(self, ctx):
+    @mhtool.group(name='tag', aliases=['tags'])
+    async def mh_tag(self, ctx):
         """Grant adminstration to specific tags"""
 
-    @mh_a_tag.command(name='add')
-    async def mh_a_t_add(self, ctx, user: discord.User, *, tag):
+    @mh_tag.command(name='add')
+    async def mh_t_add(self, ctx, user: discord.User, *, tag):
         """Add an allowed tag to a user"""
         async with self.config.user(user).allowed_tags() as tags:
             if tag not in tags:
@@ -117,8 +106,8 @@ class BayesGAMH(commands.Cog):
                 return await ctx.send(f"{user} already has access to `{tag}`.")
         await ctx.tick()
 
-    @mh_a_tag.command(name='remove', aliases=['rm', 'delete', 'del'])
-    async def mh_a_t_remove(self, ctx, user: discord.User, *, tag):
+    @mh_tag.command(name='remove', aliases=['rm', 'delete', 'del'])
+    async def mh_t_remove(self, ctx, user: discord.User, *, tag):
         """Remove an allowed tag from a user"""
         async with self.config.user(user).allowed_tags() as tags:
             if tag in tags:
@@ -127,12 +116,12 @@ class BayesGAMH(commands.Cog):
                 return await ctx.send(f"{user} already doesn't have access to `{tag}`.")
         await ctx.tick()
 
-    @mh_a_tag.group(name='list')
-    async def mh_a_t_list(self, ctx):
+    @mh_tag.group(name='list')
+    async def mh_t_list(self, ctx):
         """Listing subcommand"""
 
-    @mh_a_t_list.command(name='users')
-    async def mh_a_t_l_users(self, ctx, *, tag):
+    @mh_t_list.command(name='users')
+    async def mh_t_l_users(self, ctx, *, tag):
         """List all users who are allowed to edit a tag"""
         users = []
         for u_id, data in await self.config.all_users():
@@ -140,13 +129,13 @@ class BayesGAMH(commands.Cog):
                 users.append(user)
         await ctx.send('\n'.join(users))
 
-    @mh_a_t_list.command(name='all')
-    async def mh_a_t_l_all(self, ctx):
+    @mh_t_list.command(name='all')
+    async def mh_t_l_all(self, ctx):
         """List all available tags sorted alphabetically by length"""
         await ctx.send(', '.join(map(inline, sorted(await self.api.get_tags()))))
 
-    @mh_a_t_list.command(name='inuse', aliases=['used'])
-    async def mh_a_t_l_inuse(self, ctx):
+    @mh_t_list.command(name='inuse', aliases=['used'])
+    async def mh_t_l_inuse(self, ctx):
         """List all in-use tags"""
         tags = {}
         for user, data in await self.config.all_users():
@@ -155,6 +144,7 @@ class BayesGAMH(commands.Cog):
 
     @mhtool.group(name='query')
     @commands.dm_only()
+    @commands.check(is_editor)
     async def mh_query(self, ctx):
         """Query commands"""
 
@@ -165,7 +155,7 @@ class BayesGAMH(commands.Cog):
         If limit is left blank, all games are sent.
         """
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (await is_admin(ctx) or tag in allowed_tags):
+        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags):
             return await ctx.send(f"You aren't allowed to use the tags: {tag}")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
@@ -178,7 +168,7 @@ class BayesGAMH(commands.Cog):
     async def mh_q_new(self, ctx, limit: Optional[int], *, tag):
         """Something something new games maybe?"""
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (await is_admin(ctx) or tag in allowed_tags):
+        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags):
             return await ctx.send(f"You aren't allowed to use the tags: {tag}")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         games = await self.filter_new(games)
@@ -210,11 +200,12 @@ class BayesGAMH(commands.Cog):
         async with self.config.user(ctx.author).subscriptions() as subs:
             if tag in subs:
                 return await ctx.send("You're already subscribed to that tag.")
-            if await is_admin(ctx) and tag not in await self.api.get_tags():
+            if has_perm('mhadmin', ctx.author, self.bot) and tag not in await self.api.get_tags():
                 if not await get_user_confirmation(ctx, f"Are you sure you want to subscribe"
                                                         f" to currently non-existant tag `{tag}`?"):
                     return await ctx.react_quietly("\N{CROSS MARK}")
-            elif not await is_admin(ctx) and tag not in await self.config.user(ctx.author).allowed_tags():
+            elif not has_perm('mhadmin', ctx.author, self.bot) and tag not in await self.config.user(
+                    ctx.author).allowed_tags():
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
                                                             f" have permission to view it.  Contact a bot admin"
                                                             f" if you think this is an issue.")
