@@ -93,6 +93,7 @@ class BayesGAMH(commands.Cog):
         """A subcommand for all Bayes GAMH commands"""
 
     @mhtool.group(name='tag', aliases=['tags'])
+    @auth_check('mhadmin')
     async def mh_tag(self, ctx):
         """Grant adminstration to specific tags"""
 
