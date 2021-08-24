@@ -241,7 +241,7 @@ class BayesGAMH(commands.Cog):
         await ctx.tick()
 
     async def format_game(self, game: Game, user: User) -> str:
-        return (f"{game['name']} - ID: `{game['platformGameId']}` ({game['status']})\n"
+        return (f"`{game['platformGameId']}` - Name: {game['name']} ({game['status']})\n"
                 f"\tStart Time: {self.parse_date(game['createdAt'])}\n"
                 f"\tTags: {', '.join(map(inline, sorted(game['tags'])))}\n"
                 f"\tAvailable Assets:{', '.join(map(inline, game['assets']))}")
