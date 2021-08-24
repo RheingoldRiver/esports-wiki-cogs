@@ -242,16 +242,12 @@ class BayesGAMH(commands.Cog):
 
     async def format_game(self, game: Game, user: User) -> str:
         return (f"`{game['platformGameId']}` - Name: {game['name']} ({game['status']})\n"
-                f"\tStart Time: {(await self.parse_date(game['createdAt'], user)).strftime('%X %Z on %A %B %d, %Y')}\n"
+                f"\tStart Time: {self.parse_date(game['createdAt'])}\n"
                 f"\tTags: {', '.join(map(inline, sorted(game['tags'])))}\n"
                 f"\tAvailable Assets:{', '.join(map(inline, game['assets']))}")
 
-    async def parse_date(self, datestr: str, user: User) -> datetime:
-        date = isoparse(datestr)
-        cog: Any = self.bot.get_cog("UserPreferences")
-        if cog is None:
-            return date
-        return date.astimezone(await cog.get_user_timezone(user) or pytz.UTC)
+    def parse_date(self, datestr: str) -> str:
+        return f"<t:{int(isoparse(datestr).timestamp())}:F>"
 
     async def filter_new(self, games: List[Game]) -> List[Game]:
         """Returns only 'new' games from a list of games."""
