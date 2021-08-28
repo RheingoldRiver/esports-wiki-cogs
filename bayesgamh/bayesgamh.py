@@ -235,6 +235,7 @@ class BayesGAMH(commands.Cog):
 
     @mh_subscription.command(name='clear', aliases=['purge'])
     async def mh_s_clear(self, ctx):
+        """Clear your current subscriptions"""
         if not await get_user_confirmation(ctx, "Are you sure you want to clear all of your subscriptions?"):
             return await ctx.react_quietly("\N{CROSS MARK}")
         await self.config.user(ctx.author).subscriptions.set([])
