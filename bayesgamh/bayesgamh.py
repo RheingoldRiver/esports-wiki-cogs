@@ -1,12 +1,10 @@
 import asyncio
 import logging
-from datetime import datetime
 from io import BytesIO
 from typing import Any, List, NoReturn, Optional
 
 import aiohttp
 import discord
-import pytz
 from dateutil.parser import isoparse
 from discord import User
 from redbot.core import Config, commands
@@ -89,6 +87,7 @@ class BayesGAMH(commands.Cog):
             await self.config.seen.set(list(seeing))
 
     @commands.group()
+    @commands.check(is_editor)
     async def mhtool(self, ctx):
         """A subcommand for all Bayes GAMH commands"""
 
@@ -125,39 +124,45 @@ class BayesGAMH(commands.Cog):
     async def mh_t_l_users(self, ctx, *, tag):
         """List all users who are allowed to edit a tag"""
         users = []
-        for u_id, data in await self.config.all_users():
-            if (user := self.bot.get_user(u_id)) and tag in data.get('tags', []):
+        for u_id, data in (await self.config.all_users()).items():
+            if (user := self.bot.get_user(u_id)) and tag in data.get('allowed_tags', []):
                 users.append(user)
-        await ctx.send('\n'.join(users))
+        if not users:
+            return await ctx.send("No users have been assigned this tag.")
+        for page in pagify('\n'.join(map(lambda u: u.mention, users))):
+            await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
 
     @mh_t_list.command(name='all')
     async def mh_t_l_all(self, ctx):
         """List all available tags sorted alphabetically by length"""
-        await ctx.send(', '.join(map(inline, sorted(await self.api.get_tags()))))
+        for page in pagify(', '.join(map(inline, sorted(await self.api.get_tags()))), delims=[', ']):
+            await ctx.send(page.strip(', '))
 
     @mh_t_list.command(name='inuse', aliases=['used'])
     async def mh_t_l_inuse(self, ctx):
         """List all in-use tags"""
-        tags = {}
-        for user, data in await self.config.all_users():
+        tags = set()
+        for user, data in (await self.config.all_users()).items():
             tags.update(data.get('allowed_tags', []))
-        await ctx.send(', '.join(map(inline, sorted(tags))))
+        if not tags:
+            return await ctx.send("There are no in use tags.")
+        for page in pagify(', '.join(map(inline, sorted(tags))), delims=[', ']):
+            await ctx.send(page.strip(', '))
 
     @mhtool.group(name='query')
     @commands.dm_only()
-    @commands.check(is_editor)
     async def mh_query(self, ctx):
         """Query commands"""
 
     @mh_query.command(name='all')
     async def mh_q_all(self, ctx, limit: Optional[int], *, tag):
-        """Get a list of the most recent `limit` games containing any of the listed tags
+        """Get a list of the most recent `limit` games with the provided tag
 
         If limit is left blank, all games are sent.
         """
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags):
-            return await ctx.send(f"You aren't allowed to use the tags: {tag}")
+            return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
@@ -170,7 +175,7 @@ class BayesGAMH(commands.Cog):
         """Something something new games maybe?"""
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags):
-            return await ctx.send(f"You aren't allowed to use the tags: {tag}")
+            return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         games = await self.filter_new(games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
