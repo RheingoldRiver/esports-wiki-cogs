@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections import defaultdict
 from io import BytesIO
 from typing import Any, List, NoReturn, Optional
 
@@ -32,9 +33,9 @@ class BayesGAMH(commands.Cog):
         self.bot = bot
 
         self.session = aiohttp.ClientSession()
-        self.config = Config.get_conf(self, identifier=847356477)
-        self.config.register_global(seen=[])
-        self.config.register_user(allowed_tags=[], subscriptions=[])
+        self.config = Config.get_conf(self, identifier=847356477+1)
+        self.config.register_global(seen={})
+        self.config.register_user(allowed_tags=[], subscriptions=[], jsononly=True)
 
         self.api = BayesAPIWrapper(bot, self.session)
 
@@ -62,29 +63,45 @@ class BayesGAMH(commands.Cog):
         self.bot.loop.create_task(self.session.close())
 
     async def do_loop(self) -> NoReturn:
-        async for _ in repeating_timer(60):
-            try:
-                await self.check_subscriptions()
-            except Exception:
-                logger.exception("Error in loop:")
+        try:
+            async for _ in repeating_timer(60):
+                try:
+                    await self.check_subscriptions()
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.exception("Error in loop:")
+        except asyncio.CancelledError:
+            return
 
     async def check_subscriptions(self) -> None:
-        async with self.subscription_lock:
-            seen = await self.config.seen()
-            seeing = set(seen)
+        async with self.subscription_lock, self.config.seen() as seen:
+            tags_to_uid = defaultdict(set)
+            for u_id, data in (await self.config.all_users()).items():
+                for sub in data['subscriptions']:
+                    tags_to_uid[sub].add(u_id)
+
+            changed_games = []
+            for game in await self.api.get_all_games():
+                if seen.get(game['platformGameId'], -1) != len(game['assets']):  # Different number of assets
+                    changed_games.append(game)
+                    seen[game['platformGameId']] = len(game['assets'])
+
             for u_id, data in (await self.config.all_users()).items():
                 if (user := self.bot.get_user(u_id)) is None:
+                    logger.warning(f"Failed to find user with ID {u_id} for subscription.")
                     continue
-                if not (subs := data['subscriptions']):
-                    continue
-                games = await self.api.get_all_games(tags=subs)
-                seeing.update(game['platformGameId'] for game in games)
-                games = [game for game in games if game['platformGameId'] not in seen]
                 msg = [await self.format_game(game, user)
-                       for game in sorted(games, key=lambda g: isoparse(g['createdAt']))]
-                for page in pagify('\n\n'.join(msg)):
-                    await user.send(page)
-            await self.config.seen.set(list(seeing))
+                       for game in sorted([game for game in changed_games
+                                           if any(u_id in tags_to_uid[tag].union(tags_to_uid['ALL'])
+                                                  for tag in game['tags'])
+                                           and (len(game['assets']) == 2 or not data['jsononly'])],
+                                          key=lambda g: isoparse(g['createdAt']))]
+                try:
+                    for page in pagify('\n\n'.join(msg)):
+                        await user.send(page)
+                except discord.Forbidden:
+                    logger.warning(f"Unable to send subscription message to user {user}.  (Forbidden)")
 
     @commands.group()
     @commands.check(is_editor)
@@ -216,8 +233,9 @@ class BayesGAMH(commands.Cog):
                                                             f" have permission to view it.  Contact a bot admin"
                                                             f" if you think this is an issue.")
             await self.check_subscriptions()
-            seen = {game['platformGameId'] for game in await self.api.get_all_games(tag=tag)}
-            await self.config.seen.set(list(seen.union(await self.config.seen())))
+            async with self.config.seen() as seen:
+                for game in await self.api.get_all_games(tag=tag):
+                    seen[game['platformGameId']] = len(game['assets'])
             subs.append(tag)
         await ctx.tick()
 
@@ -246,11 +264,21 @@ class BayesGAMH(commands.Cog):
         await self.config.user(ctx.author).subscriptions.set([])
         await ctx.tick()
 
+    @mhtool.group(name='prefs', aliases=['pref'])
+    async def mh_prefs(self, ctx):
+        """Set preferences for your MHTool data"""
+
+    @mh_prefs.command(name='jsononly', aliases=['onlyjson'])
+    async def mh_p_jsononly(self, ctx, enable: bool):
+        """Only get subscription messages when a game has assets"""
+        await self.config.user(ctx.user).jsononly.set(enable)
+        await ctx.tick()
+
     async def format_game(self, game: Game, user: User) -> str:
         return (f"`{game['platformGameId']}` - Name: {game['name']} ({game['status']})\n"
                 f"\tStart Time: {self.parse_date(game['createdAt'])}\n"
                 f"\tTags: {', '.join(map(inline, sorted(game['tags'])))}\n"
-                f"\tAvailable Assets:{', '.join(map(inline, game['assets']))}")
+                f"\tAvailable Assets: {', '.join(map(inline, game['assets'])) or 'NONE'}")
 
     def parse_date(self, datestr: str) -> str:
         return f"<t:{int(isoparse(datestr).timestamp())}:F>"
