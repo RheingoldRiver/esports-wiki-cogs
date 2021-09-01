@@ -178,7 +178,7 @@ class BayesGAMH(commands.Cog):
         If limit is left blank, all games are sent.
         """
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags):
+        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
@@ -191,7 +191,7 @@ class BayesGAMH(commands.Cog):
     async def mh_q_new(self, ctx, limit: Optional[int], *, tag):
         """Something something new games maybe?"""
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags):
+        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         games = await self.filter_new(games)
@@ -227,8 +227,9 @@ class BayesGAMH(commands.Cog):
                 if not await get_user_confirmation(ctx, f"Are you sure you want to subscribe"
                                                         f" to currently non-existant tag `{tag}`?"):
                     return await ctx.react_quietly("\N{CROSS MARK}")
-            elif not has_perm('mhadmin', ctx.author, self.bot) and tag not in await self.config.user(
-                    ctx.author).allowed_tags():
+            elif not has_perm('mhadmin', ctx.author, self.bot) \
+                    and tag not in await self.config.user(ctx.author).allowed_tags() \
+                    and 'ALL' not in self.config.user(ctx.author).allowed_tags():
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
                                                             f" have permission to view it.  Contact a bot admin"
                                                             f" if you think this is an issue.")
