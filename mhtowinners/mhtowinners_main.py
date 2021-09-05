@@ -16,7 +16,7 @@ class MhToWinnersRunner(object):
     def run(self):
         pages_to_edit = self.site.cargo_client.query(
             tables="MatchScheduleGame=MSG,MatchSchedule=MS",
-            join_on="MSG.UniqueMatch=MS.UniqueMatch",
+            join_on="MSG.MatchId=MS.MatchId",
             where="(MSG.Blue IS NULL OR MSG.Red IS NULL OR MSG.Winner IS NULL) AND MSG.MatchHistory Like \"%leagueoflegends%\"",
             fields="MSG._pageName=Page,MSG.OverviewPage=OverviewPage",
             order_by="MS.DateTime_UTC DESC",

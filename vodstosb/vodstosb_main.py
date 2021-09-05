@@ -22,7 +22,7 @@ class VodsToSbRunner(object):
         ]
         result = self.site.cargo_client.query(
             tables="MatchScheduleGame=MSG,ScoreboardGames=SG",
-            join_on="MSG.ScoreboardID_Wiki=SG.ScoreboardID_Wiki",
+            join_on="MSG.GameId=SG.GameId",
             where="SG.VOD IS NULL AND SG._pageName IS NOT NULL AND ({})".format(where_condition),
             fields=', '.join(fields),
             order_by='SG._pageName, SG.N_MatchInPage',  # this is just to group same pages consecutively
