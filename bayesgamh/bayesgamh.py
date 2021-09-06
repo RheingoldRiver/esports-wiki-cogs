@@ -102,7 +102,7 @@ class BayesGAMH(commands.Cog):
                     for page in pagify('\n\n'.join(msg)):
                         await user.send(page)
                 except discord.Forbidden:
-                    logger.warning(f"Unable to send subscription message to user {user}.  (Forbidden)")
+                    logger.warning(f"Unable to send subscription message to user {user}. (Forbidden)")
 
     @commands.group()
     @commands.check(is_editor)
@@ -184,7 +184,7 @@ class BayesGAMH(commands.Cog):
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
-            await ctx.send("There are no available games.  Check to make sure your tags are valid.")
+            await ctx.send("There are no available games. Check to make sure your tag is valid and correctly cased.")
         for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
@@ -195,10 +195,12 @@ class BayesGAMH(commands.Cog):
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
+        if not games:
+            await ctx.send("There are no available games. Check to make sure your tag is valid and correctly cased.")
         games = await self.filter_new(games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
-            await ctx.send("There are no available games.  Check to make sure your tags are valid.")
+            await ctx.send("There are no new games with this tag.")
         for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
@@ -232,7 +234,7 @@ class BayesGAMH(commands.Cog):
                     and tag not in await self.config.user(ctx.author).allowed_tags() \
                     and 'ALL' not in self.config.user(ctx.author).allowed_tags():
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
-                                                            f" have permission to view it.  Contact a bot admin"
+                                                            f" have permission to view it. Contact a bot admin"
                                                             f" if you think this is an issue.")
             await self.check_subscriptions()
             async with self.config.seen() as seen:
@@ -277,12 +279,12 @@ class BayesGAMH(commands.Cog):
         await ctx.tick()
 
     async def format_game(self, game: Game, user: User) -> str:
-        status = f"({game['status']})" if game['status'] != "FINISHED" else ""
+        status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
 
-        return (f"`{game['platformGameId']}` - Name: {game['name']} {status}\n"
+        return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
+                f"\t\tName: {game['name']}\n"
                 f"\t\tStart Time: {self.parse_date(game['createdAt'])}\n"
-                f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}\n"
-                f"\t\t{self.get_asset_string(game['assets'])}")
+                f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}")
 
     def get_asset_string(self, assets: List[AssetType]):
         if 'GAMH_SUMMARY' in assets and 'GAMH_DETAILS' in assets:
