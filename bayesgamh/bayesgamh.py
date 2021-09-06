@@ -320,16 +320,10 @@ class BayesGAMH(commands.Cog):
         where = "RiotPlatformGameId IN ({})".format(
             ','.join(["'{}'".format(idx) for idx in all_ids])
         )
-        print(where)
-        print('.')
-        print('.')
-        print('.')
-        print('.')
-        print('.')
+
         result = site.cargo_client.query(tables="MatchScheduleGame",
                                          fields="RiotPlatformGameId",
                                          where=where)
-        print(result)
         
         old_ids = [row['RiotPlatformGameId'] for row in result]
         return [game for game in games if game['platformGameId'] not in old_ids]
