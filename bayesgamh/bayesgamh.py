@@ -256,7 +256,7 @@ class BayesGAMH(commands.Cog):
 
     @mh_subscription.command(name='remove', aliases=['rm', 'delete', 'del'])
     async def mh_s_remove(self, ctx, *, tag):
-        """Unsubscribe yourself from a tag"""
+        """Unsubscribe from a tag"""
         async with self.config.user(ctx.author).subscriptions() as subs:
             if tag not in subs:
                 return await ctx.send("You're not subscribed to that tag.")
