@@ -314,9 +314,11 @@ class BayesGAMH(commands.Cog):
             raise BadAPIKeyException((await self.bot.get_valid_prefixes())[0]
                                      + f"set api gamepedia account <ACCOUNT> bot <BOT> password <PASSWORD>")
 
-        all_ids = tuple(game['platformGameId'] for game in games)
-        old_ids = [row['RiotPlatformGameId'] for row in
-                   site.cargo_client.query(tables="MatchScheduleGame",
-                                           fields="RiotPlatformGameId",
-                                           where=f"RiotPlatformGameId IN {all_ids}")]
+        all_ids = tuple(game['platformGameId'].strip() for game in games)
+        
+        result = site.cargo_client.query(tables="MatchScheduleGame",
+                                         fields="RiotPlatformGameId",
+                                         where=f"RiotPlatformGameId IN {all_ids}")
+        
+        old_ids = [row['RiotPlatformGameId'] for row in result]
         return [game for game in games if game['platformGameId'] not in old_ids]
