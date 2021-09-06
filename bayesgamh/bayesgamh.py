@@ -288,9 +288,7 @@ class BayesGAMH(commands.Cog):
         if 'GAMH_SUMMARY' in assets and 'GAMH_DETAILS' in assets:
             return confirmation_message("Ready to parse")
         elif 'GAMH_SUMMARY' in assets:
-            return confirmation_message("Ready to parse, but no drakes (please do SB now & check back later)")
-        elif 'GAMH_DETAILS' in assets:
-            return confirmation_message("Ready to parse, but no drakes (this may have been a chronobreak, but you may need to check back later)")
+            return confirmation_message("Ready to parse, but no drakes (Possible chronobreak. Please check back later)")
         else:
             return cancellation_message("Not ready to parse")
 
