@@ -215,6 +215,7 @@ class BayesGAMH(commands.Cog):
         await ctx.send(await self.format_game(await self.api.get_game(game_id), ctx.author))
 
     @mh_query.command(name='getasset')
+    @auth_check('mhadmin')
     async def mh_q_getasset(self, ctx, game_id, asset):
         """Get a match asset by game_id and asset name"""
         await ctx.send(file=text_to_file(
