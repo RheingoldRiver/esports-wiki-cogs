@@ -205,7 +205,7 @@ class BayesGAMH(commands.Cog):
         games = await self.filter_new(ctx, games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
-            return await ctx.send("There are no new games with this tag.")
+            return await ctx.send(f"There are no new games with tag `{tag}`.")
         for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
