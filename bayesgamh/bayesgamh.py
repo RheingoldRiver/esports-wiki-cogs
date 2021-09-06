@@ -13,9 +13,10 @@ from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import inline, pagify, text_to_file
 from tsutils.cogs.globaladmin import auth_check, has_perm
 from tsutils.helper_functions import repeating_timer
-from tsutils.user_interaction import get_user_confirmation, send_cancellation_message
+from tsutils.user_interaction import cancellation_message, confirmation_message, get_user_confirmation, \
+    send_cancellation_message
 
-from bayesgamh.bayes_api_wrapper import BayesAPIWrapper, Game
+from bayesgamh.bayes_api_wrapper import AssetType, BayesAPIWrapper, Game
 
 logger = logging.getLogger('red.esports-wiki-cogs.bayesgahm')
 
@@ -184,7 +185,7 @@ class BayesGAMH(commands.Cog):
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
             await ctx.send("There are no available games.  Check to make sure your tags are valid.")
-        for page in pagify('\n\n'.join(ret)):
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
     @mh_query.command(name='new')
@@ -198,7 +199,7 @@ class BayesGAMH(commands.Cog):
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
             await ctx.send("There are no available games.  Check to make sure your tags are valid.")
-        for page in pagify('\n\n'.join(ret)):
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
     @mh_query.command(name='getgame')
@@ -276,10 +277,22 @@ class BayesGAMH(commands.Cog):
         await ctx.tick()
 
     async def format_game(self, game: Game, user: User) -> str:
-        return (f"`{game['platformGameId']}` - Name: {game['name']} ({game['status']})\n"
-                f"\tStart Time: {self.parse_date(game['createdAt'])}\n"
-                f"\tTags: {', '.join(map(inline, sorted(game['tags'])))}\n"
-                f"\tAvailable Assets: {', '.join(map(inline, game['assets'])) or 'NONE'}")
+        status = f"({game['status']})" if game['status'] != "FINISHED" else ""
+
+        return (f"`{game['platformGameId']}` - Name: {game['name']} {status}\n"
+                f"\t\tStart Time: {self.parse_date(game['createdAt'])}\n"
+                f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}\n"
+                f"\t\t{self.get_asset_string(game['assets'])}")
+
+    def get_asset_string(self, assets: List[AssetType]):
+        if 'GAMH_SUMMARY' in assets and 'GAMH_DETAILS' in assets:
+            return confirmation_message("Ready to parse")
+        elif 'GAMH_SUMMARY' in assets:
+            return confirmation_message("Ready to parse, but no drakes (please do SB now & check back later)")
+        elif 'GAMH_DETAILS' in assets:
+            return confirmation_message("Ready to parse, but no drakes (this may have been a chronobreak, but you may need to check back later)")
+        else:
+            return cancellation_message("Not ready to parse")
 
     def parse_date(self, datestr: str) -> str:
         return f"<t:{int(isoparse(datestr).timestamp())}:F>"
