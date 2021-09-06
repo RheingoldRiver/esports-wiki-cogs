@@ -194,7 +194,7 @@ class BayesGAMH(commands.Cog):
 
     @mh_query.command(name='new')
     async def mh_q_new(self, ctx, limit: Optional[int], *, tag):
-        """Get only games that aren't in the MatchScheduleGame table"""
+        """Get only games that aren't on the wiki yet"""
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
