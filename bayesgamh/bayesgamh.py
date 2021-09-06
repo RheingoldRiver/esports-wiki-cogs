@@ -187,7 +187,8 @@ class BayesGAMH(commands.Cog):
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
-            return await ctx.send("There are no games with this tag. Make sure the tag is valid and correctly cased.")
+            return await ctx.send(f"There are no games with tag `{tag}`."
+                                  f" Make sure the tag is valid and correctly cased.")
         for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
@@ -199,7 +200,8 @@ class BayesGAMH(commands.Cog):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         if not games:
-            return await ctx.send("There are no games with this tag. Make sure the tag is valid and correctly cased.")
+            return await ctx.send(f"There are no games with tag `{tag}`."
+                                  f" Make sure the tag is valid and correctly cased.")
         games = await self.filter_new(ctx, games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
