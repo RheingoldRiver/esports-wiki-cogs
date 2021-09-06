@@ -42,11 +42,11 @@ class BayesAPIWrapper:
 
     async def _ensure_login(self, force_relogin: bool = False) -> None:
         """Ensure that the access_token is recent and valid"""
-        keys = await self.bot.get_shared_api_tokens("bayes")
-        if not ("username" in keys and "password" in keys):
-            raise NoAPIKeyException((await self.bot.get_valid_prefixes())[0]
-                                    + f"set api bayes username <USERNAME> password <PASSWORD>")
-        if self.access_token is None:
+        if self.access_token is None or force_relogin:
+            keys = await self.bot.get_shared_api_tokens("bayes")
+            if not ("username" in keys and "password" in keys):
+                raise NoAPIKeyException((await self.bot.get_valid_prefixes())[0]
+                                        + f"set api bayes username <USERNAME> password <PASSWORD>")
             try:
                 data = await self._do_api_call('POST', 'login',
                                                {'username': keys['username'], 'password': keys['password']})
@@ -58,7 +58,8 @@ class BayesAPIWrapper:
             self.access_token = data['accessToken']
             self.expires = datetime.now() + timedelta(seconds=data['expiresIn'] - 30)  # 30 second buffer to be safe
 
-    async def _do_api_call(self, method: Literal['GET', 'POST'], service: str, data: Dict[str, Any] = None):
+    async def _do_api_call(self, method: Literal['GET', 'POST'], service: str,
+                           data: Dict[str, Any] = None, *, allow_retry: bool = True):
         """Make a single API call to emh-api.bayesesports.com"""
         endpoint = "https://emh-api.bayesesports.com/"
         if data is None:
@@ -66,6 +67,9 @@ class BayesAPIWrapper:
 
         if method == "GET":
             async with self.session.get(endpoint + service, headers=await self._get_headers(), params=data) as resp:
+                if resp.status == 401 and allow_retry:
+                    await self._ensure_login(force_relogin=True)
+                    return await self._do_api_call(method, service, data, allow_retry=False)
                 resp.raise_for_status()
                 data = await resp.json()
         elif method == "POST":
