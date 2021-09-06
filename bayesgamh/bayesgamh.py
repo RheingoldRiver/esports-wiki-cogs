@@ -16,9 +16,10 @@ from rivercogutils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
 from tsutils.errors import BadAPIKeyException, NoAPIKeyException
 from tsutils.helper_functions import repeating_timer
-from tsutils.user_interaction import get_user_confirmation, send_cancellation_message
+from tsutils.user_interaction import cancellation_message, confirmation_message, get_user_confirmation, \
+    send_cancellation_message
 
-from bayesgamh.bayes_api_wrapper import BayesAPIWrapper, Game
+from bayesgamh.bayes_api_wrapper import AssetType, BayesAPIWrapper, Game
 
 logger = logging.getLogger('red.esports-wiki-cogs.bayesgamh')
 
@@ -104,7 +105,7 @@ class BayesGAMH(commands.Cog):
                     for page in pagify('\n\n'.join(msg)):
                         await user.send(page)
                 except discord.Forbidden:
-                    logger.warning(f"Unable to send subscription message to user {user}.  (Forbidden)")
+                    logger.warning(f"Unable to send subscription message to user {user}. (Forbidden)")
 
     @commands.group()
     @commands.check(is_editor)
@@ -186,8 +187,9 @@ class BayesGAMH(commands.Cog):
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
-            await ctx.send("There are no available games.  Check to make sure your tags are valid.")
-        for page in pagify('\n\n'.join(ret)):
+            return await ctx.send(f"There are no games with tag `{tag}`."
+                                  f" Make sure the tag is valid and correctly cased.")
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
     @mh_query.command(name='new')
@@ -197,11 +199,14 @@ class BayesGAMH(commands.Cog):
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
+        if not games:
+            return await ctx.send(f"There are no games with tag `{tag}`."
+                                  f" Make sure the tag is valid and correctly cased.")
         games = await self.filter_new(ctx, games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
-            await ctx.send("There are no available games.  Check to make sure your tags are valid.")
-        for page in pagify('\n\n'.join(ret)):
+            return await ctx.send(f"There are no new games with tag `{tag}`.")
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
     @mh_query.command(name='getgame')
@@ -234,7 +239,7 @@ class BayesGAMH(commands.Cog):
                     and tag not in await self.config.user(ctx.author).allowed_tags() \
                     and 'ALL' not in self.config.user(ctx.author).allowed_tags():
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
-                                                            f" have permission to view it.  Contact a bot admin"
+                                                            f" have permission to view it. Contact a bot admin"
                                                             f" if you think this is an issue.")
             await self.check_subscriptions()
             async with self.config.seen() as seen:
@@ -279,10 +284,20 @@ class BayesGAMH(commands.Cog):
         await ctx.tick()
 
     async def format_game(self, game: Game, user: User) -> str:
-        return (f"`{game['platformGameId']}` - Name: {game['name']} ({game['status']})\n"
-                f"\tStart Time: {self.parse_date(game['createdAt'])}\n"
-                f"\tTags: {', '.join(map(inline, sorted(game['tags'])))}\n"
-                f"\tAvailable Assets: {', '.join(map(inline, game['assets'])) or 'NONE'}")
+        status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
+
+        return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
+                f"\t\tName: {game['name']}\n"
+                f"\t\tStart Time: {self.parse_date(game['createdAt'])}\n"
+                f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}")
+
+    def get_asset_string(self, assets: List[AssetType]):
+        if 'GAMH_SUMMARY' in assets and 'GAMH_DETAILS' in assets:
+            return confirmation_message("Ready to parse")
+        elif 'GAMH_SUMMARY' in assets:
+            return confirmation_message("Ready to parse, but no drakes (Possible chronobreak. Please check back later)")
+        else:
+            return cancellation_message("Not ready to parse")
 
     def parse_date(self, datestr: str) -> str:
         return f"<t:{int(isoparse(datestr).timestamp())}:F>"
