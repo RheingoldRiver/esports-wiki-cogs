@@ -15,6 +15,8 @@
     "python-dateutil",
     "mwclient",
     "tsutils",
+    "mwrogue",
+    "mwcleric>=0.6.5",
     "git+git://github.com/RheingoldRiver/rivercogutils"
   ],
   "tags": []
