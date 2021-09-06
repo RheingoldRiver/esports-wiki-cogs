@@ -8,16 +8,19 @@ import aiohttp
 import discord
 from dateutil.parser import isoparse
 from discord import User
+from mwclient import LoginError
 from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import inline, pagify, text_to_file
+from rivercogutils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
+from tsutils.errors import BadAPIKeyException, NoAPIKeyException
 from tsutils.helper_functions import repeating_timer
 from tsutils.user_interaction import get_user_confirmation, send_cancellation_message
 
 from bayesgamh.bayes_api_wrapper import BayesAPIWrapper, Game
 
-logger = logging.getLogger('red.esports-wiki-cogs.bayesgahm')
+logger = logging.getLogger('red.esports-wiki-cogs.bayesgamh')
 
 
 async def is_editor(ctx) -> bool:
@@ -33,7 +36,7 @@ class BayesGAMH(commands.Cog):
         self.bot = bot
 
         self.session = aiohttp.ClientSession()
-        self.config = Config.get_conf(self, identifier=847356477+1)
+        self.config = Config.get_conf(self, identifier=847356477 + 1)
         self.config.register_global(seen={})
         self.config.register_user(allowed_tags=[], subscriptions=[], jsononly=True)
 
@@ -189,12 +192,12 @@ class BayesGAMH(commands.Cog):
 
     @mh_query.command(name='new')
     async def mh_q_new(self, ctx, limit: Optional[int], *, tag):
-        """Something something new games maybe?"""
+        """Get only games that aren't in the MatchScheduleGame table"""
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
-        games = await self.filter_new(games)
+        games = await self.filter_new(ctx, games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
         if not ret:
             await ctx.send("There are no available games.  Check to make sure your tags are valid.")
@@ -284,6 +287,20 @@ class BayesGAMH(commands.Cog):
     def parse_date(self, datestr: str) -> str:
         return f"<t:{int(isoparse(datestr).timestamp())}:F>"
 
-    async def filter_new(self, games: List[Game]) -> List[Game]:
-        """Returns only 'new' games from a list of games."""
-        return games  # TODO: River needs to write this
+    async def filter_new(self, ctx, games: List[Game]) -> List[Game]:
+        """Returns only new games from a list of games."""
+        if not games:
+            return []
+        try:
+            if (site := await login_if_possible(ctx, self.bot, 'lol')) is None:
+                raise NoAPIKeyException
+        except LoginError:
+            raise BadAPIKeyException((await self.bot.get_valid_prefixes())[0]
+                                     + f"set api gamepedia account <ACCOUNT> bot <BOT> password <PASSWORD>")
+
+        all_ids = tuple(game['platformGameId'] for game in games)
+        old_ids = [row['RiotPlatformGameId'] for row in
+                   site.cargo_client.query(tables="MatchScheduleGame",
+                                           fields="RiotPlatformGameId",
+                                           where=f"RiotPlatformGameId IN {all_ids}")]
+        return [game for game in games if game['platformGameId'] not in old_ids]
