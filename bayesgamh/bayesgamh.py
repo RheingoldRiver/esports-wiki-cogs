@@ -9,6 +9,7 @@ import discord
 from dateutil.parser import isoparse
 from discord import User
 from mwclient import LoginError
+from mwrogue.esports_client import EsportsClient
 from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import inline, pagify, text_to_file
@@ -202,10 +203,14 @@ class BayesGAMH(commands.Cog):
         if not games:
             return await ctx.send(f"There are no games with tag `{tag}`."
                                   f" Make sure the tag is valid and correctly cased.")
-        games = await self.filter_new(ctx, games)
+
+        site = await login_if_possible(ctx, self.bot, 'lol')
+        games = await self.filter_new(site, games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
+        
         if not ret:
             return await ctx.send(f"There are no new games with tag `{tag}`.")
+        
         for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
@@ -303,22 +308,19 @@ class BayesGAMH(commands.Cog):
     def parse_date(self, datestr: str) -> str:
         return f"<t:{int(isoparse(datestr).timestamp())}:F>"
 
-    async def filter_new(self, ctx, games: List[Game]) -> List[Game]:
+    @staticmethod
+    async def filter_new(site: EsportsClient, games: List[Game]) -> List[Game]:
         """Returns only new games from a list of games."""
         if not games:
             return []
-        try:
-            if (site := await login_if_possible(ctx, self.bot, 'lol')) is None:
-                raise NoAPIKeyException
-        except LoginError:
-            raise BadAPIKeyException((await self.bot.get_valid_prefixes())[0]
-                                     + f"set api gamepedia account <ACCOUNT> bot <BOT> password <PASSWORD>")
 
-        all_ids = tuple(game['platformGameId'].strip() for game in games)
-        
+        all_ids = [game['platformGameId'].strip() for game in games]
+        where = "RiotPlatformGameId IN ({})".format(
+            ','.join(["'{}'".format(idx) for idx in all_ids])
+        )
         result = site.cargo_client.query(tables="MatchScheduleGame",
                                          fields="RiotPlatformGameId",
-                                         where=f"RiotPlatformGameId IN {all_ids}")
+                                         where=where)
         
         old_ids = [row['RiotPlatformGameId'] for row in result]
         return [game for game in games if game['platformGameId'] not in old_ids]
