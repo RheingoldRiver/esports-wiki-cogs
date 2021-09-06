@@ -297,7 +297,8 @@ class BayesGAMH(commands.Cog):
                 f"\t\tStart Time: {self.parse_date(game['createdAt'])}\n"
                 f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}")
 
-    def get_asset_string(self, assets: List[AssetType]):
+    @staticmethod
+    def get_asset_string(assets: List[AssetType]):
         if 'GAMH_SUMMARY' in assets and 'GAMH_DETAILS' in assets:
             return confirmation_message("Ready to parse")
         elif 'GAMH_SUMMARY' in assets:
@@ -305,7 +306,8 @@ class BayesGAMH(commands.Cog):
         else:
             return cancellation_message("Not ready to parse")
 
-    def parse_date(self, datestr: str) -> str:
+    @staticmethod
+    def parse_date(datestr: str) -> str:
         return f"<t:{int(isoparse(datestr).timestamp())}:F>"
 
     @staticmethod
