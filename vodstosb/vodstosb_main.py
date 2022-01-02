@@ -23,7 +23,8 @@ class VodsToSbRunner(object):
         result = self.site.cargo_client.query(
             tables="MatchScheduleGame=MSG,ScoreboardGames=SG",
             join_on="MSG.GameId=SG.GameId",
-            where="SG.VOD IS NULL AND SG._pageName IS NOT NULL AND ({})".format(where_condition),
+            where=f"(SG.VOD IS NULL AND SG._pageName IS NOT NULL AND ({where_condition}))"
+                  f" OR (SG.VOD != COALESCE(MSG.Vod, MSG.VodPB, MSG.VodGameStart, MSG.VodPostgame))",
             fields=', '.join(fields),
             order_by='SG._pageName, SG.N_MatchInPage',  # this is just to group same pages consecutively
             limit=5000
@@ -41,7 +42,7 @@ class VodsToSbRunner(object):
                 current_page['page_name'] = item['SBPage']
                 current_page['page'] = self.site.client.pages[current_page['page_name']]
                 current_page['wikitext'] = mwparserfromhell.parse(current_page['page'].text())
-                print('Discovered page {}'.format(current_page['page_name']))
+                # print('Discovered page {}'.format(current_page['page_name']))
             self.add_vod_to_page(item, current_page['wikitext'])
         
         # we need to catch the last iteration too (assuming we actually did anything)
@@ -66,7 +67,6 @@ class VodsToSbRunner(object):
             if not name.startswith('Scoreboard/Season') and not name.startswith('MatchRecapS8'):
                 continue
             n_game_in_match += 1
-            # print('Game: {}, Target: {}, Match: {}, Target: {}'.format(str(n_game_in_match), str(n_game_target), str(n_match), str(n_match_target)))
             if n_game_in_match != n_game_target or n_match != n_match_target:
                 continue
             template.add('vodlink', item['Vod'])
@@ -94,6 +94,6 @@ class VodsToSbRunner(object):
 
 
 if __name__ == '__main__':
-    credentials = AuthCredentials(user_file='me')
-    site = EsportsClient('lol', credentials=credentials)  # Set wiki
-    VodsToSbRunner(site, ['VodPB', 'VodGameStart', 'Vod', 'VodPostgame']).run()
+    credentials = AuthCredentials(user_file='bot')
+    lol_site = EsportsClient('lol', credentials=credentials)  # Set wiki
+    VodsToSbRunner(lol_site, ['VodPB', 'VodGameStart', 'Vod', 'VodPostgame']).run()
