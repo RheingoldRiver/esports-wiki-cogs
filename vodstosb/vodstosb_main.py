@@ -27,7 +27,6 @@ class VodsToSbRunner(object):
                   f" OR (SG.VOD != COALESCE(MSG.Vod, MSG.VodPB, MSG.VodGameStart, MSG.VodPostgame))",
             fields=', '.join(fields),
             order_by='SG._pageName, SG.N_MatchInPage',  # this is just to group same pages consecutively
-            limit=5000
         )
         
         current_page = {
