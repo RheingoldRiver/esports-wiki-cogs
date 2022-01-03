@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from collections import defaultdict
 from io import BytesIO
 from typing import Any, List, NoReturn, Optional
@@ -36,9 +37,9 @@ class BayesGAMH(commands.Cog):
         self.bot = bot
 
         self.session = aiohttp.ClientSession()
-        self.config = Config.get_conf(self, identifier=847356477 + 1)
+        self.config = Config.get_conf(self, identifier=847356477)
         self.config.register_global(seen={})
-        self.config.register_user(allowed_tags=[], subscriptions=[], jsononly=True)
+        self.config.register_user(allowed_tags={}, subscriptions={}, jsononly=True)
 
         self.api = BayesAPIWrapper(bot, self.session)
 
@@ -59,7 +60,7 @@ class BayesGAMH(commands.Cog):
 
     async def red_delete_data_for_user(self, *, requester, user_id):
         """Delete a user's personal data."""
-        await self.config.user_from_id(user_id).subscriptions.set([])
+        await self.config.user_from_id(user_id).subscriptions.set({})
 
     def cog_unload(self):
         self._loop.cancel()
@@ -121,7 +122,7 @@ class BayesGAMH(commands.Cog):
         """Add an allowed tag to a user"""
         async with self.config.user(user).allowed_tags() as tags:
             if tag not in tags:
-                tags.append(tag)
+                tags[tag] = {'date': time.time()}
             else:
                 return await ctx.send(f"{user} already has access to `{tag}`.")
         await ctx.tick()
@@ -131,7 +132,7 @@ class BayesGAMH(commands.Cog):
         """Remove an allowed tag from a user"""
         async with self.config.user(user).allowed_tags() as tags:
             if tag in tags:
-                tags.remove(tag)
+                tags.pop(tag)
             else:
                 return await ctx.send(f"{user} already doesn't have access to `{tag}`.")
         await ctx.tick()
@@ -140,29 +141,34 @@ class BayesGAMH(commands.Cog):
     async def mh_t_list(self, ctx):
         """Listing subcommand"""
 
-    @mh_t_list.group(name='users', invoke_without_command=True)
-    async def mh_t_l_users(self, ctx, *, tag):
-        """List all users who are allowed to edit a tag"""
-        users = []
-        for u_id, data in (await self.config.all_users()).items():
-            if (user := self.bot.get_user(u_id)) and tag in data.get('allowed_tags', []):
-                users.append(user)
-        if not users:
-            return await ctx.send("No users have been assigned this tag.")
-        for page in pagify('\n'.join(map(lambda u: u.mention, users))):
-            await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
+    @mh_t_list.command(name='users')
+    async def mh_t_l_users(self, ctx, *, tag=None):
+        """List all users who are allowed to edit a specific tag
 
-    @mh_t_l_users.command(name='any')
-    async def mh_t_l_u_any(self, ctx):
-        """List all users who are allowed to edit any tag"""
+        Leave tag unfilled to get a list of all users who are able to edit any tag
+        """
         users = []
-        for u_id, data in (await self.config.all_users()).items():
-            if (user := self.bot.get_user(u_id)) and data.get('allowed_tags', []):
-                users.append(user)
-        if not users:
-            return await ctx.send("No users have been assigned this tag.")
-        for page in pagify('\n'.join(map(lambda u: u.mention, users))):
-            await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
+        if tag is not None:
+            for u_id, data in (await self.config.all_users()).items():
+                if (user := self.bot.get_user(u_id)) and tag in data.get('allowed_tags', {}):
+                    users.append({'user': user, 'date': data['allowed_tags'][tag].get('date', 0)})
+
+            if not users:
+                return await ctx.send("No users have been assigned this tag.")
+            users.sort(key=lambda d: d['date'])
+            for page in pagify('\n'.join(map(lambda d: f"{d['user'].mention} <t:{int(d['date'])}>", users))):
+                await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
+        else:
+            for u_id, data in (await self.config.all_users()).items():
+                if (user := self.bot.get_user(u_id)):
+                    for tag, tdata in data.get('allowed_tags', {}).items():
+                        users.append({'user': user, 'tag': tag, 'date': tdata.get('date', 0)})
+
+            if not users:
+                return await ctx.send("No users have been assigned any tag.")
+            users.sort(key=lambda d: (d['user'].mention, d['date']))
+            for page in pagify('\n'.join(map(lambda d: f"{d['user'].mention} {d['tag']} <t:{int(d['date'])}>", users))):
+                await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
 
     @mh_t_list.command(name='all')
     async def mh_t_l_all(self, ctx):
@@ -175,7 +181,7 @@ class BayesGAMH(commands.Cog):
         """List all in-use tags"""
         tags = set()
         for user, data in (await self.config.all_users()).items():
-            tags.update(data.get('allowed_tags', []))
+            tags.update(data.get('allowed_tags', {}))
         if not tags:
             return await ctx.send("There are no in use tags.")
         for page in pagify(', '.join(map(inline, sorted(tags))), delims=[', ']):
@@ -261,7 +267,7 @@ class BayesGAMH(commands.Cog):
             async with self.config.seen() as seen:
                 for game in await self.api.get_all_games(tag=tag):
                     seen[game['platformGameId']] = len(game['assets'])
-            subs.append(tag)
+            subs[tag] = {'date': time.time()}
         await ctx.tick()
 
     @mh_subscription.command(name='remove', aliases=['rm', 'delete', 'del'])
@@ -270,7 +276,7 @@ class BayesGAMH(commands.Cog):
         async with self.config.user(ctx.author).subscriptions() as subs:
             if tag not in subs:
                 return await ctx.send("You're not subscribed to that tag.")
-            subs.remove(tag)
+            subs.pop(tag)
         await ctx.tick()
 
     @mh_subscription.command(name='list')
@@ -286,7 +292,7 @@ class BayesGAMH(commands.Cog):
         """Clear your current subscriptions"""
         if not await get_user_confirmation(ctx, "Are you sure you want to clear all of your subscriptions?"):
             return await ctx.react_quietly("\N{CROSS MARK}")
-        await self.config.user(ctx.author).subscriptions.set([])
+        await self.config.user(ctx.author).subscriptions.set({})
         await ctx.tick()
 
     @mhtool.group(name='prefs', aliases=['pref'])
