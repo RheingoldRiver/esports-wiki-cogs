@@ -8,14 +8,12 @@ import aiohttp
 import discord
 from dateutil.parser import isoparse
 from discord import User
-from mwclient import LoginError
 from mwrogue.esports_client import EsportsClient
 from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import inline, pagify, text_to_file
 from rivercogutils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
-from tsutils.errors import BadAPIKeyException, NoAPIKeyException
 from tsutils.helper_functions import repeating_timer
 from tsutils.user_interaction import cancellation_message, confirmation_message, get_user_confirmation, \
     send_cancellation_message
@@ -142,12 +140,24 @@ class BayesGAMH(commands.Cog):
     async def mh_t_list(self, ctx):
         """Listing subcommand"""
 
-    @mh_t_list.command(name='users')
+    @mh_t_list.group(name='users', invoke_without_command=True)
     async def mh_t_l_users(self, ctx, *, tag):
         """List all users who are allowed to edit a tag"""
         users = []
         for u_id, data in (await self.config.all_users()).items():
             if (user := self.bot.get_user(u_id)) and tag in data.get('allowed_tags', []):
+                users.append(user)
+        if not users:
+            return await ctx.send("No users have been assigned this tag.")
+        for page in pagify('\n'.join(map(lambda u: u.mention, users))):
+            await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
+
+    @mh_t_l_users.command(name='any')
+    async def mh_t_l_u_any(self, ctx):
+        """List all users who are allowed to edit any tag"""
+        users = []
+        for u_id, data in (await self.config.all_users()).items():
+            if (user := self.bot.get_user(u_id)) and data.get('allowed_tags', []):
                 users.append(user)
         if not users:
             return await ctx.send("No users have been assigned this tag.")
@@ -207,10 +217,10 @@ class BayesGAMH(commands.Cog):
         site = await login_if_possible(ctx, self.bot, 'lol')
         games = await self.filter_new(site, games)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
-        
+
         if not ret:
             return await ctx.send(f"There are no new games with tag `{tag}`.")
-        
+
         for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
 
@@ -316,14 +326,12 @@ class BayesGAMH(commands.Cog):
         if not games:
             return []
 
-        all_ids = [game['platformGameId'].strip() for game in games]
-        where = "RiotPlatformGameId IN ({})".format(
-            ','.join(["'{}'".format(idx) for idx in all_ids])
-        )
+        all_ids = [repr(game['platformGameId'].strip()) for game in games]
+        where = f"RiotPlatformGameId IN ({','.join(all_ids)})"
 
         result = site.cargo_client.query(tables="MatchScheduleGame",
                                          fields="RiotPlatformGameId",
                                          where=where)
-        
+
         old_ids = [row['RiotPlatformGameId'] for row in result]
         return [game for game in games if game['platformGameId'] not in old_ids]
