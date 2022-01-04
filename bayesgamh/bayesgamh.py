@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
+from datetime import datetime
 from io import BytesIO
 from typing import Any, List, NoReturn, Optional
 
@@ -156,7 +157,9 @@ class BayesGAMH(commands.Cog):
             if not users:
                 return await ctx.send("No users have been assigned this tag.")
             users.sort(key=lambda d: d['date'])
-            for page in pagify('\n'.join(map(lambda d: f"{d['user'].mention} <t:{int(d['date'])}>", users))):
+            for page in pagify('\n'.join(f"{d['user'].mention}"
+                                         f" {datetime.fromtimestamp((d['date'])).strftime('%Y %b %-d')}"
+                                         for d in users)):
                 await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
         else:
             for u_id, data in (await self.config.all_users()).items():
@@ -167,7 +170,9 @@ class BayesGAMH(commands.Cog):
             if not users:
                 return await ctx.send("No users have been assigned any tag.")
             users.sort(key=lambda d: (d['user'].mention, d['date']))
-            for page in pagify('\n'.join(map(lambda d: f"{d['user'].mention} {d['tag']} <t:{int(d['date'])}>", users))):
+            for page in pagify('\n'.join(f"{d['user'].mention} `{d['tag']}`"
+                                         f" {datetime.fromtimestamp((d['date'])).strftime('%Y %b %-d')}"
+                                         for d in users)):
                 await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
 
     @mh_t_list.command(name='all')
