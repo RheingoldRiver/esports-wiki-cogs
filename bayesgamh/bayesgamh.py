@@ -192,6 +192,18 @@ class BayesGAMH(commands.Cog):
         for page in pagify(', '.join(map(inline, sorted(tags))), delims=[', ']):
             await ctx.send(page.strip(', '))
 
+    @mh_t_list.command(name='invalid')
+    async def mh_t_l_invalid(self, ctx):
+        """List all currently invalid tags"""
+        tags = set()
+        for user, data in (await self.config.all_users()).items():
+            tags.update(data.get('allowed_tags', {}))
+        tags.difference_update(await self.api.get_tags())
+        if not tags:
+            return await ctx.send("There are no invalid tags.")
+        for page in pagify(', '.join(map(inline, sorted(tags))), delims=[', ']):
+            await ctx.send(page.strip(', '))
+
     @mhtool.group(name='query')
     @commands.dm_only()
     async def mh_query(self, ctx):

@@ -93,7 +93,7 @@ class BayesAPIWrapper:
 
     async def get_tags(self) -> List[Tag]:
         """Return a list of tags that can be used to request games"""
-        return ['NULL'] + await self._do_api_call('GET', 'api/v1/tags')
+        return ['NULL', 'ALL'] + await self._do_api_call('GET', 'api/v1/tags')
 
     async def get_games(self, *, page: Optional[int] = None, page_size: Optional[int] = None,
                         from_timestamp: Optional[Union[datetime, str]] = None,
