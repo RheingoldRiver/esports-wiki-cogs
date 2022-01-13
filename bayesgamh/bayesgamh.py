@@ -9,11 +9,11 @@ from typing import Any, List, NoReturn, Optional
 import aiohttp
 import discord
 from dateutil.parser import isoparse
-from discord import User
+from discord import DMChannel, TextChannel, User
 from mwrogue.esports_client import EsportsClient
 from redbot.core import Config, commands
 from redbot.core.bot import Red
-from redbot.core.utils.chat_formatting import inline, pagify, text_to_file
+from redbot.core.utils.chat_formatting import box, inline, pagify, text_to_file
 from rivercogutils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
 from tsutils.helper_functions import repeating_timer
@@ -32,6 +32,15 @@ async def is_editor(ctx) -> bool:
             or await GAMHCOG.config.user(ctx.author).allowed_tags())
 
 
+async def is_dm_or_whitelisted(ctx) -> bool:
+    GAMHCOG = ctx.bot.get_cog("BayesGAMH")
+    if not (isinstance(ctx.channel, DMChannel)
+            or str(ctx.channel.id) in await GAMHCOG.config.allowed_channels()):
+        raise commands.UserFeedbackCheckFailure("This command is only available in"
+                                                " DMs or whitelisted channels.")
+    return True
+
+
 class BayesGAMH(commands.Cog):
     def __init__(self, bot: Red, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,7 +48,7 @@ class BayesGAMH(commands.Cog):
 
         self.session = aiohttp.ClientSession()
         self.config = Config.get_conf(self, identifier=847356477)
-        self.config.register_global(seen={})
+        self.config.register_global(seen={}, allowed_channels={})
         self.config.register_user(allowed_tags={}, subscriptions={}, jsononly=True)
 
         self.api = BayesAPIWrapper(bot, self.session)
@@ -110,6 +119,7 @@ class BayesGAMH(commands.Cog):
 
     @commands.group()
     @commands.check(is_editor)
+    @commands.check(is_dm_or_whitelisted)
     async def mhtool(self, ctx):
         """A subcommand for all Bayes GAMH commands"""
 
@@ -205,7 +215,6 @@ class BayesGAMH(commands.Cog):
             await ctx.send(page.strip(', '))
 
     @mhtool.group(name='query')
-    @commands.dm_only()
     async def mh_query(self, ctx):
         """Query commands"""
 
@@ -321,6 +330,38 @@ class BayesGAMH(commands.Cog):
         """Only get subscription messages when a game has assets"""
         await self.config.user(ctx.user).jsononly.set(enable)
         await ctx.tick()
+
+    @mhtool.group(name='channels', aliases=['channel'])
+    @auth_check('mhadmin')
+    async def mh_channels(self, ctx):
+        """Set whitelisted channels for the use of this cog"""
+
+    @mh_channels.command(name="add")
+    async def mh_c_add(self, ctx, channel: TextChannel):
+        """Add a channel"""
+        async with self.config.allowed_channels() as channels:
+            channels[str(channel.id)] = {'date': time.time()}
+        await ctx.tick()
+
+    @mh_channels.command(name='remove', aliases=['rm', 'delete', 'del'])
+    async def mh_c_remove(self, ctx, channel: TextChannel):
+        """Remove a channel"""
+        async with self.config.allowed_channels() as channels:
+            if str(channel.id) in channels:
+                channels.pop(str(channel.id))
+            else:
+                return await ctx.send(f"{channel} was not already an allowed channel.")
+        await ctx.tick()
+
+    @mh_channels.command(name="list")
+    async def mh_c_list(self, ctx):
+        """List whitelisted channels"""
+        channels = [channel for cid in await self.config.allowed_channels()
+                    if (channel := self.bot.get_channel(int(cid)))]
+        if not channels:
+            return await ctx.send("There are no whitelisted channels.")
+        for page in pagify('\n'.join(f"{c.id} ({c.guild.name}/{c.name})" for c in channels)):
+            await ctx.send(box(page))
 
     async def format_game(self, game: Game, user: User) -> str:
         status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
