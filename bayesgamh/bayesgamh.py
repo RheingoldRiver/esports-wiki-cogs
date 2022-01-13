@@ -1,10 +1,11 @@
 import asyncio
+import json
 import logging
 import time
 from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
-from typing import Any, List, NoReturn, Optional
+from typing import Any, List, NoReturn
 
 import aiohttp
 import discord
@@ -13,6 +14,7 @@ from discord import DMChannel, TextChannel, User
 from mwrogue.esports_client import EsportsClient
 from redbot.core import Config, commands
 from redbot.core.bot import Red
+from redbot.core.commands import UserInputOptional
 from redbot.core.utils.chat_formatting import box, inline, pagify, text_to_file
 from rivercogutils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
@@ -105,7 +107,7 @@ class BayesGAMH(commands.Cog):
                 if (user := self.bot.get_user(u_id)) is None:
                     logger.warning(f"Failed to find user with ID {u_id} for subscription.")
                     continue
-                msg = [await self.format_game(game, user)
+                msg = [await self.format_game_long(game, user)
                        for game in sorted([game for game in changed_games
                                            if any(u_id in tags_to_uid[tag].union(tags_to_uid['ALL'])
                                                   for tag in game['tags'])
@@ -219,10 +221,10 @@ class BayesGAMH(commands.Cog):
         """Query commands"""
 
     @mh_query.command(name='all')
-    async def mh_q_all(self, ctx, limit: Optional[int], *, tag):
+    async def mh_q_all(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
         """Get a list of the most recent `limit` games with the provided tag
 
-        If limit is left blank, all games are sent.
+        If limit is left blank, 50 games are sent.
         """
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
@@ -236,7 +238,7 @@ class BayesGAMH(commands.Cog):
             await ctx.send(page)
 
     @mh_query.command(name='new')
-    async def mh_q_new(self, ctx, limit: Optional[int], *, tag):
+    async def mh_q_new(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
         """Get only games that aren't on the wiki yet"""
         allowed_tags = await self.config.user(ctx.author).allowed_tags()
         if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
@@ -259,7 +261,7 @@ class BayesGAMH(commands.Cog):
     @mh_query.command(name='getgame')
     async def mh_q_getgame(self, ctx, game_id):
         """Get a game by its game ID"""
-        await ctx.send(await self.format_game(await self.api.get_game(game_id), ctx.author))
+        await ctx.send(await self.format_game_long(await self.api.get_game(game_id), ctx.author))
 
     @mh_query.command(name='getasset')
     @auth_check('mhadmin')
@@ -268,6 +270,49 @@ class BayesGAMH(commands.Cog):
         await ctx.send(file=text_to_file(
             (await self.api.get_asset(game_id, asset)).decode('utf-8'),  # TODO: Send PR to red to allow bytes
             filename=asset + '.json'))
+
+    @mhtool.group(name='query2')
+    @commands.dm_only()
+    async def mh_query2(self, ctx):
+        """Slow query commands"""
+
+    @mh_query2.command(name='all')
+    async def mh_q2_all(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
+        """Get a list of the most recent `limit` games with the provided tag
+
+        If limit is left blank, 50 games are sent.
+        """
+        allowed_tags = await self.config.user(ctx.author).allowed_tags()
+        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
+            return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
+        games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
+        ret = [await self.format_game_long(game, ctx.author) for game in games[:limit][::-1]]
+        if not ret:
+            return await ctx.send(f"There are no games with tag `{tag}`."
+                                  f" Make sure the tag is valid and correctly cased.")
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
+            await ctx.send(page)
+
+    @mh_query2.command(name='new')
+    async def mh_q2_new(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
+        """Get only games that aren't on the wiki yet"""
+        allowed_tags = await self.config.user(ctx.author).allowed_tags()
+        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
+            return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
+        games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
+        if not games:
+            return await ctx.send(f"There are no games with tag `{tag}`."
+                                  f" Make sure the tag is valid and correctly cased.")
+
+        site = await login_if_possible(ctx, self.bot, 'lol')
+        games = await self.filter_new(site, games)
+        ret = [await self.format_game_long(game, ctx.author) for game in games[:limit][::-1]]
+
+        if not ret:
+            return await ctx.send(f"There are no new games with tag `{tag}`.")
+
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
+            await ctx.send(page)
 
     @mhtool.group(name='subscription', aliases=['subscriptions', 'subscribe'])
     async def mh_subscription(self, ctx):
@@ -368,6 +413,21 @@ class BayesGAMH(commands.Cog):
 
         return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
                 f"\t\tName: {game['name']}\n"
+                f"\t\tStart Time: {self.parse_date(game['createdAt'])}\n"
+                f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}")
+
+    async def format_game_long(self, game: Game, user: User) -> str:
+        status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
+        teams = winner = 'Unknown'
+        if 'GAMH_SUMMARY' in game['assets']:
+            summary = json.loads(await self.api.get_asset(game['platformGameId'], 'GAMH_SUMMARY'))
+            t1, t2 = summary['participants'][::5]
+            teams = (f"{t1['summonerName'].split(' ')[0]} vs {t2['summonerName'].split(' ')[0]}")
+            winner = t1['summonerName'].split(' ')[0] if t1['win'] else t2['summonerName'].split(' ')[0]
+        return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
+                f"\t\tName: {game['name']}\n"
+                f"\t\tTeams: {teams}\n"
+                f"\t\tWinner: {winner}\n"
                 f"\t\tStart Time: {self.parse_date(game['createdAt'])}\n"
                 f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}")
 
