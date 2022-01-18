@@ -111,7 +111,7 @@ class BayesGAMH(commands.Cog):
                        for game in sorted([game for game in changed_games
                                            if any(u_id in tags_to_uid[tag].union(tags_to_uid['ALL'])
                                                   for tag in game['tags'])
-                                           and (len(game['assets']) == 2 or not data['jsononly'])],
+                                           and ('GAMH_DETAILS' in game['assets'] or not data['jsononly'])],
                                           key=lambda g: isoparse(g['createdAt']))]
                 try:
                     for page in pagify('\n\n'.join(msg)):
@@ -267,9 +267,7 @@ class BayesGAMH(commands.Cog):
     @auth_check('mhadmin')
     async def mh_q_getasset(self, ctx, game_id, asset):
         """Get a match asset by game_id and asset name"""
-        await ctx.send(file=text_to_file(
-            (await self.api.get_asset(game_id, asset)).decode('utf-8'),  # TODO: Send PR to red to allow bytes
-            filename=asset + '.json'))
+        await ctx.send(file=discord.File(BytesIO(await self.api.get_asset(game_id, asset)), asset + '.json'))
 
     @mhtool.group(name='query2')
     @commands.dm_only()
