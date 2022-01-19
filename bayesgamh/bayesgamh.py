@@ -328,7 +328,7 @@ class BayesGAMH(commands.Cog):
                     return await ctx.react_quietly("\N{CROSS MARK}")
             elif not has_perm('mhadmin', ctx.author, self.bot) \
                     and tag not in await self.config.user(ctx.author).allowed_tags() \
-                    and 'ALL' not in self.config.user(ctx.author).allowed_tags():
+                    and 'ALL' not in await self.config.user(ctx.author).allowed_tags():
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
                                                             f" have permission to view it. Contact a bot admin"
                                                             f" if you think this is an issue.")
