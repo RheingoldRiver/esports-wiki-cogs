@@ -12,19 +12,20 @@ class VodsToSbRunner(object):
     
     def run(self):
         where_condition = ' OR '.join(['MSG.{} IS NOT NULL'.format(_) for _ in self.vod_params])
-        vod_options = ['MSG.{}'.format(_) for _ in self.vod_params]
+        vod_options_string = ', '.join(['MSG.{}'.format(_) for _ in self.vod_params])
         fields = [
-            'COALESCE({})=Vod'.format(', '.join(vod_options)),
+            'COALESCE({})=Vod'.format(vod_options_string),
             'MSG._pageName=MSGPage',
             'SG._pageName=SBPage',
             'SG.N_MatchInPage=N_MatchInPage',
-            'SG.N_GameInMatch=N_GameInMatch'
+            'SG.N_GameInMatch=N_GameInMatch',
+            'COALESCE(SG.VOD)=SGVod',
         ]
         result = self.site.cargo_client.query(
             tables="MatchScheduleGame=MSG,ScoreboardGames=SG",
             join_on="MSG.GameId=SG.GameId",
             where=f"(SG.VOD IS NULL AND SG._pageName IS NOT NULL AND ({where_condition}))"
-                  f" OR (SG.VOD != COALESCE(MSG.Vod, MSG.VodPB, MSG.VodGameStart, MSG.VodPostgame))",
+                  f" OR (COALESCE(SG.VOD) != COALESCE({vod_options_string}))",
             fields=', '.join(fields),
             order_by='SG._pageName, SG.N_MatchInPage',  # this is just to group same pages consecutively
         )
@@ -33,6 +34,7 @@ class VodsToSbRunner(object):
             'page': None,
             'wikitext': None,
             'page_name': None,
+            'old_text': None,
         }
         for item in result:
             if current_page['page_name'] != item['SBPage']:
@@ -40,7 +42,9 @@ class VodsToSbRunner(object):
                     self.save_page(current_page)
                 current_page['page_name'] = item['SBPage']
                 current_page['page'] = self.site.client.pages[current_page['page_name']]
-                current_page['wikitext'] = mwparserfromhell.parse(current_page['page'].text())
+                old_text = current_page['page'].text()
+                current_page['old_text'] = old_text
+                current_page['wikitext'] = mwparserfromhell.parse(old_text)
                 # print('Discovered page {}'.format(current_page['page_name']))
             self.add_vod_to_page(item, current_page['wikitext'])
         
@@ -68,7 +72,7 @@ class VodsToSbRunner(object):
             n_game_in_match += 1
             if n_game_in_match != n_game_target or n_match != n_match_target:
                 continue
-            template.add('vodlink', item['Vod'])
+            template.add('vodlink', item['Vod'].replace('&amp;', '&'))
     
     @staticmethod
     def is_match_placeholder(template):
@@ -86,10 +90,10 @@ class VodsToSbRunner(object):
             return False
         return template.get(1).value.strip() == 'Game'
     
-    def save_page(self, page):
-        new_text = str(page['wikitext'])
-        if new_text != page['page'].text():
-            self.site.save(page['page'], new_text, summary=self.summary)
+    def save_page(self, page_dict):
+        new_text = str(page_dict['wikitext'])
+        if new_text != page_dict['old_text']:
+            self.site.save(page_dict['page'], new_text, summary=self.summary)
 
 
 if __name__ == '__main__':
