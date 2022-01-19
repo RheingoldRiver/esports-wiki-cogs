@@ -9,7 +9,7 @@ from tsutils.errors import BadAPIKeyException, NoAPIKeyException
 
 from bayesgamh.errors import BadRequestException
 
-logger = logging.getLogger('red.esports-wiki-cogs.bayesgahm')
+logger = logging.getLogger('red.esports-wiki-cogs.bayesgamh')
 
 GameID = AssetType = str
 Tag = Union[str, Literal['NULL', 'ALL']]
