@@ -33,11 +33,12 @@ class MhToWinnersRunner(object):
             text = page.text()
             wikitext = mwparserfromhell.parse(text)
             self.update_wikitext(wikitext, item['OverviewPage'])
+            self.site.report_all_errors('mhtowinners')
             new_text = str(wikitext)
             if new_text != text:
                 self.site.save(page, new_text, summary=self.summary)
     
-    def update_wikitext(self, wikitext, overview_page):
+    def update_wikitext(self, wikitext, overview_page: str):
         for template in wikitext.filter_templates():
             if not template.name.matches('MatchSchedule/Game'):
                 continue
@@ -51,7 +52,11 @@ class MhToWinnersRunner(object):
                 template.get('mh').value.strip()
             )
             # print(mh_url)
-            game = lol_esports_parser.get_riot_game(mh_url)
+            try:
+                game = lol_esports_parser.get_riot_game(mh_url)
+            except Exception as e:
+                self.site.log_error_script(overview_page, e)
+                continue
             blue = getattr(game.teams.BLUE.sources, 'inferred_name', None)
             red = getattr(game.teams.RED.sources, 'inferred_name', None)
             blue_team = self.site.cache.get_team_from_event_tricode(overview_page, blue)
