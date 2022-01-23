@@ -1,9 +1,9 @@
-from mwrogue.esports_client import EsportsClient
-from mwrogue.auth_credentials import AuthCredentials
 import mwparserfromhell
+from mwrogue.auth_credentials import AuthCredentials
+from mwrogue.esports_client import EsportsClient
 
 
-class SbToWinners:
+class SbToWinnersRunner:
     summary = "Discover sides & winners from the SB & populate in the row"
     
     def __init__(self, site: EsportsClient):
@@ -85,4 +85,4 @@ class SbToWinners:
 if __name__ == '__main__':
     credentials = AuthCredentials(user_file='me')
     lol_site = EsportsClient('lol', credentials=credentials)  # Set wiki
-    SbToWinners(lol_site).run()
+    SbToWinnersRunner(lol_site).run()

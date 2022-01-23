@@ -1,7 +1,8 @@
-from redbot.core import commands
 import rivercogutils as utils
-import logging
+from redbot.core import commands
+
 from mhtowinners.mhtowinners_main import MhToWinnersRunner
+from vodstosb.sbtowinners_main import SbToWinnersRunner
 
 
 class MhToWinners(commands.Cog):
@@ -12,8 +13,14 @@ class MhToWinners(commands.Cog):
     
     @commands.command(pass_context=True)
     async def mhtowinners(self, ctx):
-        site = await utils.login_if_possible(ctx, self.bot, 'lol')
-        
         await ctx.send('Okay, starting now!')
+        site = await utils.login_if_possible(ctx, self.bot, 'lol')
         MhToWinnersRunner(site).run()
+        await ctx.send('Okay, done!')
+    
+    @commands.command(pass_context=True)
+    async def sbtowinners(self, ctx):
+        await ctx.send('Okay, starting now!')
+        site = await utils.login_if_possible(ctx, self.bot, 'lol')
+        SbToWinnersRunner(site).run()
         await ctx.send('Okay, done!')
