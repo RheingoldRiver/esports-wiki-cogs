@@ -2,7 +2,7 @@ import rivercogutils as utils
 from redbot.core import commands
 
 from mhtowinners.mhtowinners_main import MhToWinnersRunner
-from vodstosb.sbtowinners_main import SbToWinnersRunner
+from mhtowinners.sbtowinners_main import SbToWinnersRunner
 
 
 class MhToWinners(commands.Cog):
