@@ -62,8 +62,8 @@ class MhToWinnersRunner(object):
             mh_url = (
                 template.get('mh').value.strip()
             )
-            print(overview_page)
-            print(mh_url)
+            # print(overview_page)
+            # print(mh_url)
             try:
                 game = lol_esports_parser.get_riot_game(mh_url)
             except Exception as e:
