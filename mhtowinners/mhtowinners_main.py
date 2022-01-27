@@ -14,10 +14,21 @@ class MhToWinnersRunner(object):
         self.summary = 'Discover sides & winners from the MH & populate in the row'
     
     def run(self):
+        result = self.site.cargo_client.query(
+            tables="TournamentScriptsToSkip",
+            fields="OverviewPage",
+            where='Script="sbtowinners"'
+        )
+        events_to_skip = []
+        for item in result:
+            events_to_skip.append("'{}'".format(item["OverviewPage"]))
+        
         pages_to_edit = self.site.cargo_client.query(
             tables="MatchScheduleGame=MSG,MatchSchedule=MS",
             join_on="MSG.MatchId=MS.MatchId",
-            where="(MSG.Blue IS NULL OR MSG.Red IS NULL OR MSG.Winner IS NULL) AND MSG.MatchHistory Like \"%leagueoflegends%\"",
+            where=f"(MSG.Blue IS NULL OR MSG.Red IS NULL OR MSG.Winner IS NULL) "
+                  f"AND MSG.MatchHistory Like \"%leagueoflegends%\" "
+                  f"AND MSG.OverviewPage NOT IN ({','.join(events_to_skip)})",
             fields="MSG._pageName=Page,MSG.OverviewPage=OverviewPage",
             order_by="MS.DateTime_UTC DESC",
             group_by="MSG._pageName"
@@ -51,7 +62,8 @@ class MhToWinnersRunner(object):
             mh_url = (
                 template.get('mh').value.strip()
             )
-            # print(mh_url)
+            print(overview_page)
+            print(mh_url)
             try:
                 game = lol_esports_parser.get_riot_game(mh_url)
             except Exception as e:
