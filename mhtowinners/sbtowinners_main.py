@@ -10,6 +10,15 @@ class SbToWinnersRunner:
         self.site = site
     
     def run(self):
+        result = self.site.cargo_client.query(
+            tables="TournamentScriptsToSkip",
+            fields="OverviewPage",
+            where='Script="sbtowinners"'
+        )
+        events_to_skip = []
+        for item in result:
+            events_to_skip.append("'{}'".format(item["OverviewPage"]))
+        
         fields = [
             "SG.Team1",
             "SG.Team2",
@@ -25,7 +34,8 @@ class SbToWinnersRunner:
             fields=fields,
             join_on="MSG.GameId=SG.GameId",
             where=f"(MSG.Blue IS NULL OR MSG.Red IS NULL OR MSG.Winner IS NULL) "
-                  f"AND (SG.Team1 IS NOT NULL OR SG.Team2 IS NOT NULL OR SG.WinTeam IS NOT NULL)",
+                  f"AND (SG.Team1 IS NOT NULL OR SG.Team2 IS NOT NULL OR SG.WinTeam IS NOT NULL) "
+                  f"AND MSG.OverviewPage NOT IN ({','.join(events_to_skip)})",
             order_by='MSG._pageName'
         )
         
