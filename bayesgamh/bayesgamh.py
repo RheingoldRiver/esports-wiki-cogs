@@ -15,7 +15,7 @@ from mwrogue.esports_client import EsportsClient
 from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.commands import UserInputOptional
-from redbot.core.utils.chat_formatting import box, inline, pagify, text_to_file
+from redbot.core.utils.chat_formatting import box, inline, pagify
 from rivercogutils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
 from tsutils.helper_functions import repeating_timer
@@ -95,6 +95,7 @@ class BayesGAMH(commands.Cog):
             tags_to_uid = defaultdict(set)
             for u_id, data in (await self.config.all_users()).items():
                 for sub in data['subscriptions']:
+                    
                     tags_to_uid[sub].add(u_id)
 
             changed_games = []
@@ -111,7 +112,9 @@ class BayesGAMH(commands.Cog):
                        for game in sorted([game for game in changed_games
                                            if any(u_id in tags_to_uid[tag].union(tags_to_uid['ALL'])
                                                   for tag in game['tags'])
-                                           and ('GAMH_DETAILS' in game['assets'] or not data['jsononly'])],
+                                           and ('GAMH_DETAILS' in game['assets'] or not data['jsononly'])
+                                           and (set(game['tags']).intersection({*data['allowed_tags'], 'ALL'})
+                                                or has_perm('mhadmin', user, self.bot))],
                                           key=lambda g: isoparse(g['createdAt']))]
                 try:
                     for page in pagify('\n\n'.join(msg)):
@@ -146,6 +149,9 @@ class BayesGAMH(commands.Cog):
         async with self.config.user(user).allowed_tags() as tags:
             if tag in tags:
                 tags.pop(tag)
+                async with self.config.user(user).subscriptions() as subs:
+                    if tag in subs:
+                        subs.pop(tag)
             else:
                 return await ctx.send(f"{user} already doesn't have access to `{tag}`.")
         await ctx.tick()
