@@ -15,7 +15,7 @@ from mwrogue.esports_client import EsportsClient
 from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.commands import UserInputOptional
-from redbot.core.utils.chat_formatting import box, inline, pagify
+from redbot.core.utils.chat_formatting import box, inline, pagify, spoiler
 from rivercogutils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
 from tsutils.helper_functions import repeating_timer
@@ -95,7 +95,6 @@ class BayesGAMH(commands.Cog):
             tags_to_uid = defaultdict(set)
             for u_id, data in (await self.config.all_users()).items():
                 for sub in data['subscriptions']:
-                    
                     tags_to_uid[sub].add(u_id)
 
             changed_games = []
@@ -342,7 +341,7 @@ class BayesGAMH(commands.Cog):
             async with self.config.seen() as seen:
                 for game in await self.api.get_all_games(tag=tag):
                     seen[game['platformGameId']] = len(game['assets'])
-            subs[tag] = {'date': time.time()}
+            subs[tag] = {'date': time.time(), 'spoiler': False}
         await ctx.tick()
 
     @mh_subscription.command(name='remove', aliases=['rm', 'delete', 'del'])
@@ -369,6 +368,36 @@ class BayesGAMH(commands.Cog):
             return await ctx.react_quietly("\N{CROSS MARK}")
         await self.config.user(ctx.author).subscriptions.set({})
         await ctx.tick()
+
+    @mh_subscription.group(name='set', aliases=['settings'])
+    async def mh_s_set(self, ctx):
+        """Change settings about your subscriptions"""
+
+    @mh_s_set.command(name='spoiler')
+    async def mh_s_s_spoiler(self, ctx, *, tag):
+        async with self.config.user(ctx.author).subscriptions() as subs:
+            if tag not in subs:
+                return await ctx.send("You're not subscribed to that tag.")
+            subs[tag]['spoiler'] = True
+        await ctx.tick()
+
+    @mh_s_set.command(name='unspoiler')
+    async def mh_s_s_unspoiler(self, ctx, *, tag):
+        async with self.config.user(ctx.author).subscriptions() as subs:
+            if tag not in subs:
+                return await ctx.send("You're not subscribed to that tag.")
+            subs[tag]['spoiler'] = False
+        await ctx.tick()
+
+    @mh_subscription.group(name='show')
+    async def mh_s_show(self, ctx, *, tag):
+        """Show the settings of a subscription"""
+        subs = await self.config.user(ctx.author).subscriptions()
+        if tag not in subs:
+            return await ctx.send("You're not subscribed to that tag.")
+        sub = subs[tag]
+        await ctx.send(f"Tag: {tag}\n"
+                       f"Spoiler: {sub['spoiler']}")
 
     @mhtool.group(name='prefs', aliases=['pref'])
     async def mh_prefs(self, ctx):
@@ -421,6 +450,10 @@ class BayesGAMH(commands.Cog):
                 f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}")
 
     async def format_game_long(self, game: Game, user: User) -> str:
+        subs = await self.config.user(user).subscriptions()
+        use_spoiler_tags = any(data.get('spoiler') for sub, data in subs.items() if sub in game['tags'])
+        use_spoiler_tags = use_spoiler_tags or subs.get('ALL', {}).get('spoiler')
+
         status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
         teams = winner = 'Unknown'
         if 'GAMH_SUMMARY' in game['assets']:
@@ -428,6 +461,8 @@ class BayesGAMH(commands.Cog):
             t1, t2 = summary['participants'][::5]
             teams = (f"{t1['summonerName'].split(' ')[0]} vs {t2['summonerName'].split(' ')[0]}")
             winner = t1['summonerName'].split(' ')[0] if t1['win'] else t2['summonerName'].split(' ')[0]
+            if use_spoiler_tags:
+                winner = spoiler(winner.ljust(30))
         return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
                 f"\t\tName: {game['name']}\n"
                 f"\t\tTeams: {teams}\n"
