@@ -5,7 +5,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
-from typing import Any, List, NoReturn
+from typing import Any, List, NoReturn, Optional
 
 import aiohttp
 import discord
@@ -50,7 +50,7 @@ class BayesGAMH(commands.Cog):
 
         self.session = aiohttp.ClientSession()
         self.config = Config.get_conf(self, identifier=847356477)
-        self.config.register_global(seen={}, allowed_channels={})
+        self.config.register_global(seen={}, allowed_channels={}, auto_channels={})
         self.config.register_user(allowed_tags={}, subscriptions={}, jsononly=True)
 
         self.api = BayesAPIWrapper(bot, self.session)
@@ -82,7 +82,8 @@ class BayesGAMH(commands.Cog):
         try:
             async for _ in repeating_timer(60):
                 try:
-                    await self.check_subscriptions()
+                    await self.do_auto_channel()
+                    await self.do_subscriptions()
                 except asyncio.CancelledError:
                     raise
                 except Exception:
@@ -90,7 +91,7 @@ class BayesGAMH(commands.Cog):
         except asyncio.CancelledError:
             return
 
-    async def check_subscriptions(self) -> None:
+    async def do_subscriptions(self) -> None:
         async with self.subscription_lock, self.config.seen() as seen:
             tags_to_uid = defaultdict(set)
             for u_id, data in (await self.config.all_users()).items():
@@ -121,6 +122,18 @@ class BayesGAMH(commands.Cog):
                         await user.send(page)
                 except discord.Forbidden:
                     logger.warning(f"Unable to send subscription message to user {user}. (Forbidden)")
+
+    async def do_auto_channel(self) -> None:
+        seen = await self.config.seen()
+        changed_games = sorted((game for game in await self.api.get_all_games()
+                                if seen.get(game['platformGameId'], -1) != len(game['assets'])),
+                               key=lambda g: isoparse(g['createdAt']))
+        msg = [await self.format_game_long(game, None) for game in changed_games]
+
+        for cid in await self.config.auto_channels():
+            if None is not (channel := self.bot.get_channel(int(cid))):
+                for page in pagify('\n\n'.join(msg)):
+                    await channel.send(page)
 
     @commands.group()
     @commands.check(is_editor)
@@ -338,7 +351,7 @@ class BayesGAMH(commands.Cog):
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
                                                             f" have permission to view it. Contact a bot admin"
                                                             f" if you think this is an issue.")
-            await self.check_subscriptions()
+            await self.do_subscriptions()
             async with self.config.seen() as seen:
                 for game in await self.api.get_all_games(tag=tag):
                     seen[game['platformGameId']] = len(game['assets'])
@@ -412,7 +425,39 @@ class BayesGAMH(commands.Cog):
         for page in pagify('\n'.join(f"{c.id} ({c.guild.name}/{c.name})" for c in channels)):
             await ctx.send(box(page))
 
-    async def format_game(self, game: Game, user: User) -> str:
+    @mhtool.group(name='autochannels', aliases=['autochannel'])
+    @auth_check('mhadmin')
+    async def mh_autochannels(self, ctx):
+        """Set channels to get all games sent to"""
+
+    @mh_autochannels.command(name="add")
+    async def mh_ac_add(self, ctx, channel: TextChannel):
+        """Add a channel"""
+        async with self.config.auto_channels() as channels:
+            channels[str(channel.id)] = {'date': time.time()}
+        await ctx.tick()
+
+    @mh_autochannels.command(name='remove', aliases=['rm', 'delete', 'del'])
+    async def mh_ac_remove(self, ctx, channel: TextChannel):
+        """Remove a channel"""
+        async with self.config.auto_channels() as channels:
+            if str(channel.id) in channels:
+                channels.pop(str(channel.id))
+            else:
+                return await ctx.send(f"{channel} was not already an auto channel.")
+        await ctx.tick()
+
+    @mh_autochannels.command(name="list")
+    async def mh_ac_list(self, ctx):
+        """List auto-channels"""
+        channels = [channel for cid in await self.config.auto_channels()
+                    if (channel := self.bot.get_channel(int(cid)))]
+        if not channels:
+            return await ctx.send("There are no auto channels.")
+        for page in pagify('\n'.join(f"{c.id} ({c.guild.name}/{c.name})" for c in channels)):
+            await ctx.send(box(page))
+
+    async def format_game(self, game: Game, user: Optional[User]) -> str:
         status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
 
         return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
