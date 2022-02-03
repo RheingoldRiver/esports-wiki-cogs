@@ -451,8 +451,8 @@ class BayesGAMH(commands.Cog):
 
     async def format_game_long(self, game: Game, user: User) -> str:
         subs = await self.config.user(user).subscriptions()
-        spoil = any(data.get('spoiler') for sub, data in subs.items() if sub in game['tags'])
-        spoil = spoil or subs.get('ALL', {}).get('spoiler')
+        use_spoiler_tags = any(data.get('spoiler') for sub, data in subs.items() if sub in game['tags'])
+        use_spoiler_tags = use_spoiler_tags or subs.get('ALL', {}).get('spoiler')
 
         status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
         teams = winner = 'Unknown'
@@ -461,7 +461,7 @@ class BayesGAMH(commands.Cog):
             t1, t2 = summary['participants'][::5]
             teams = (f"{t1['summonerName'].split(' ')[0]} vs {t2['summonerName'].split(' ')[0]}")
             winner = t1['summonerName'].split(' ')[0] if t1['win'] else t2['summonerName'].split(' ')[0]
-            if spoil:
+            if use_spoiler_tags:
                 winner = spoiler(winner.ljust(30))
         return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
                 f"\t\tName: {game['name']}\n"
