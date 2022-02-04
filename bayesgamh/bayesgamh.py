@@ -495,7 +495,7 @@ class BayesGAMH(commands.Cog):
                 f"\t\tTags: {', '.join(map(inline, sorted(game['tags'])))}")
 
     async def format_game_long(self, game: Game, user: Optional[User]) -> str:
-        subs = await self.config.user(user).subscriptions()
+        subs = {} if user is None else await self.config.user(user).subscriptions()
         use_spoiler_tags = any(data.get('spoiler') for sub, data in subs.items() if sub in game['tags'])
         use_spoiler_tags = use_spoiler_tags or subs.get('ALL', {}).get('spoiler')
 
