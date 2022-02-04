@@ -23,6 +23,7 @@ from tsutils.user_interaction import cancellation_message, confirmation_message,
     send_cancellation_message
 
 from bayesgamh.bayes_api_wrapper import AssetType, BayesAPIWrapper, Game
+from bayesgamh.errors import BadRequestException
 
 logger = logging.getLogger('red.esports-wiki-cogs.bayesgamh')
 
@@ -50,7 +51,7 @@ class BayesGAMH(commands.Cog):
 
         self.session = aiohttp.ClientSession()
         self.config = Config.get_conf(self, identifier=847356477)
-        self.config.register_global(seen={}, allowed_channels={}, auto_channels={})
+        self.config.register_global(seen={}, allowed_channels={}, auto_channels={}, invalid_games={})
         self.config.register_user(allowed_tags={}, subscriptions={}, jsononly=True)
 
         self.api = BayesAPIWrapper(bot, self.session)
@@ -266,9 +267,11 @@ class BayesGAMH(commands.Cog):
             return await ctx.send(f"There are no games with tag `{tag}`."
                                   f" Make sure the tag is valid and correctly cased.")
 
+        invalid_games = await self.config.invalid_games()
         site = await login_if_possible(ctx, self.bot, 'lol')
         games = await self.filter_new(site, games)
-        ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
+        ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]
+               if game['platformGameId'] not in invalid_games]
 
         if not ret:
             return await ctx.send(f"There are no new games with tag `{tag}`.")
@@ -320,9 +323,11 @@ class BayesGAMH(commands.Cog):
             return await ctx.send(f"There are no games with tag `{tag}`."
                                   f" Make sure the tag is valid and correctly cased.")
 
+        invalid_games = await self.config.invalid_games()
         site = await login_if_possible(ctx, self.bot, 'lol')
         games = await self.filter_new(site, games)
-        ret = [await self.format_game_long(game, ctx.author) for game in games[:limit][::-1]]
+        ret = [await self.format_game_long(game, ctx.author) for game in games[:limit][::-1]
+               if game['platformGameId'] not in invalid_games]
 
         if not ret:
             return await ctx.send(f"There are no new games with tag `{tag}`.")
@@ -486,6 +491,62 @@ class BayesGAMH(commands.Cog):
         for page in pagify('\n'.join(f"{c.id} ({c.guild.name}/{c.name})" for c in channels)):
             await ctx.send(box(page))
 
+    @mhtool.group(name='cleanup')
+    async def mh_cleanup(self, ctx):
+        """Clean up invalid games"""
+
+    @mh_cleanup.command(name='game', aliases=['games'])
+    async def mh_cu_game(self, ctx, *rpgids):
+        """Clean up single games"""
+        no_perms = []
+        invalid_ids = []
+
+        allowed_tags = await self.config.user(ctx.author).allowed_tags()
+        async with self.config.invalid_games() as invalid_games:
+            for rpgid in (rpgid.strip(',') for rpgid in rpgids):
+                try:
+                    game = await self.api.get_game(rpgid)
+                except BadRequestException:
+                    invalid_ids.append(rpgid)
+                    continue
+
+                if not (set(allowed_tags).intersection({*game['tags'], 'ALL'})
+                        or has_perm('mhadmin', ctx.author, self.bot)):
+                    no_perms.append(rpgid)
+                    continue
+
+                invalid_games[rpgid] = {'date': time.time()}
+
+        badmsg = ""
+        if invalid_ids:
+            badmsg += 'Invalid IDs:\n' + '\n'.join(invalid_ids) + '\n\n'
+        if no_perms:
+            badmsg += 'Invalid Perms:\n' + '\n'.join(no_perms)
+        if badmsg:
+            await ctx.send("All games were cleaned up except for the following: \n" + badmsg.strip())
+        else:
+            await ctx.tick()
+
+    @mh_cleanup.command(name='tag', aliases=['tags'])
+    @auth_check('mhadmin')
+    async def mh_cu_tag(self, ctx, *, tags):
+        """Clean up tags"""
+        did_action = False
+
+        allowed_tags = await self.config.user(ctx.author).allowed_tags()
+        site = await login_if_possible(ctx, self.bot, 'lol')
+        async with self.config.invalid_games() as invalid_games:
+            for tag in (tag.strip() for tag in tags.split(',')):
+                games = await self.filter_new(site, await self.api.get_all_games(tag=tag))
+                for game in games:
+                    invalid_games[game['platformGameId']] = {'date': time.time()}
+                    did_action = True
+
+        if not did_action:
+            await ctx.send("No games were cleaned up. Make sure there are new games in this tag.")
+        else:
+            await ctx.tick()
+
     async def format_game(self, game: Game, user: Optional[User]) -> str:
         status = f" ({game['status']})" if game['status'] != "FINISHED" else ""
 
@@ -503,11 +564,14 @@ class BayesGAMH(commands.Cog):
         teams = winner = 'Unknown'
         if 'GAMH_SUMMARY' in game['assets']:
             summary = json.loads(await self.api.get_asset(game['platformGameId'], 'GAMH_SUMMARY'))
-            t1, t2 = summary['participants'][::5]
-            teams = (f"{t1['summonerName'].split(' ')[0]} vs {t2['summonerName'].split(' ')[0]}")
-            winner = t1['summonerName'].split(' ')[0] if t1['win'] else t2['summonerName'].split(' ')[0]
-            if use_spoiler_tags:
-                winner = spoiler(winner.ljust(30))
+            if len(summary['participants'][::5]) == 2:
+                t1, t2 = summary['participants'][::5]
+                teams = (f"{t1['summonerName'].split(' ')[0]} vs {t2['summonerName'].split(' ')[0]}")
+                winner = t1['summonerName'].split(' ')[0] if t1['win'] else t2['summonerName'].split(' ')[0]
+                if use_spoiler_tags:
+                    winner = spoiler(winner.ljust(30))
+            else:
+                print(game)
         return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
                 f"\t\tName: {game['name']}\n"
                 f"\t\tTeams: {teams}\n"
