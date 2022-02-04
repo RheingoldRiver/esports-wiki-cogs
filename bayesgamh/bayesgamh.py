@@ -570,8 +570,6 @@ class BayesGAMH(commands.Cog):
                 winner = t1['summonerName'].split(' ')[0] if t1['win'] else t2['summonerName'].split(' ')[0]
                 if use_spoiler_tags:
                     winner = spoiler(winner.ljust(30))
-            else:
-                print(game)
         return (f"`{game['platformGameId']}`{status} {self.get_asset_string(game['assets'])}\n"
                 f"\t\tName: {game['name']}\n"
                 f"\t\tTeams: {teams}\n"
