@@ -128,7 +128,7 @@ class BayesGAMH(commands.Cog):
         changed_games = sorted((game for game in await self.api.get_all_games()
                                 if seen.get(game['platformGameId'], -1) != len(game['assets'])),
                                key=lambda g: isoparse(g['createdAt']))
-        msg = [await self.format_game_long(game, None) for game in changed_games]
+        msg = [await self.format_game_long(game, None) for game in changed_games if 'GAMH_DETAILS' in game['assets']]
 
         for cid in await self.config.auto_channels():
             if None is not (channel := self.bot.get_channel(int(cid))):
