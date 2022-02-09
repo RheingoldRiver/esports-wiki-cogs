@@ -103,7 +103,6 @@ class BayesGAMH(commands.Cog):
             for game in await self.api.get_all_games():
                 if seen.get(game['platformGameId'], -1) != len(game['assets']):  # Different number of assets
                     changed_games.append(game)
-                    seen[game['platformGameId']] = len(game['assets'])
 
             for u_id, data in (await self.config.all_users()).items():
                 if (user := self.bot.get_user(u_id)) is None:
@@ -122,6 +121,9 @@ class BayesGAMH(commands.Cog):
                         await user.send(page)
                 except discord.Forbidden:
                     logger.warning(f"Unable to send subscription message to user {user}. (Forbidden)")
+
+            for game in changed_games:
+                seen[game['platformGameId']] = len(game['assets'])
 
     async def do_auto_channel(self) -> None:
         seen = await self.config.seen()
