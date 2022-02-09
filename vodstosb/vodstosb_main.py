@@ -37,6 +37,7 @@ class VodsToSbRunner(object):
             'old_text': None,
         }
         for item in result:
+            # print(item['N_MatchInPage'])
             if current_page['page_name'] != item['SBPage']:
                 if current_page['page'] is not None:
                     self.save_page(current_page)
@@ -72,6 +73,7 @@ class VodsToSbRunner(object):
             n_game_in_match += 1
             if n_game_in_match != n_game_target or n_match != n_match_target:
                 continue
+            # print(item['Vod'])
             template.add('vodlink', item['Vod'].replace('&amp;', '&'))
     
     @staticmethod
