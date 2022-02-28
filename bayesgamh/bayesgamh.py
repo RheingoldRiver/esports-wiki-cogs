@@ -175,13 +175,18 @@ class BayesGAMH(commands.Cog):
     async def mh_t_list(self, ctx):
         """Listing subcommand"""
 
-    @mh_t_list.command(name='users')
+    @mh_t_list.command(name='users', usage='[tag] [--names]')
     async def mh_t_l_users(self, ctx, *, tag=None):
         """List all users who are allowed to edit a specific tag
 
         Leave tag unfilled to get a list of all users who are able to edit any tag
         """
         users = []
+        names = False
+        if tag and tag.endswith('--names'):
+            tag = tag[:-len('--names')].strip() or None
+            names = True
+
         if tag is not None:
             for u_id, data in (await self.config.all_users()).items():
                 if (user := self.bot.get_user(u_id)) and tag in data.get('allowed_tags', {}):
@@ -190,7 +195,7 @@ class BayesGAMH(commands.Cog):
             if not users:
                 return await ctx.send("No users have been assigned this tag.")
             users.sort(key=lambda d: d['date'])
-            for page in pagify('\n'.join(f"{d['user'].mention}"
+            for page in pagify('\n'.join(f"{d['user'].name if names else d['user'].mention}"
                                          f" {datetime.fromtimestamp((d['date'])).strftime('%Y %b %-d')}"
                                          for d in users)):
                 await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
@@ -203,7 +208,7 @@ class BayesGAMH(commands.Cog):
             if not users:
                 return await ctx.send("No users have been assigned any tag.")
             users.sort(key=lambda d: (d['user'].mention, d['date']))
-            for page in pagify('\n'.join(f"{d['user'].mention} `{d['tag']}`"
+            for page in pagify('\n'.join(f"{d['user'].name if names else d['user'].mention} `{d['tag']}`"
                                          f" {datetime.fromtimestamp((d['date'])).strftime('%Y %b %-d')}"
                                          for d in users)):
                 await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))

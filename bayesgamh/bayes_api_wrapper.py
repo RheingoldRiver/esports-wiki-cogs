@@ -70,6 +70,8 @@ class BayesAPIWrapper:
                 if resp.status == 401 and allow_retry:
                     await self._ensure_login(force_relogin=True)
                     return await self._do_api_call(method, service, data, allow_retry=False)
+                elif resp.status == 429:
+                    raise BadRequestException("You requested too many games.")
                 resp.raise_for_status()
                 data = await resp.json()
         elif method == "POST":
