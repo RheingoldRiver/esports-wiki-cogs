@@ -9,7 +9,7 @@
   "min_python_version": [3, 8, 1],
   "hidden": false,
   "disabled": false,
-  "required_cogs": {"globaladmin": "https://github.com/TsubakiBotPad/misc-cogs"},
+  "required_cogs": {"globaladmin": "https://github.com/TsubakiBotPad/core-cogs"},
   "requirements": [
     "aiohttp",
     "python-dateutil",
