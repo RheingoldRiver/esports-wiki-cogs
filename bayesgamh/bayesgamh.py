@@ -213,6 +213,41 @@ class BayesGAMH(commands.Cog):
                                          for d in users)):
                 await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
 
+    @mh_t_list.command(name='tags')
+    async def mh_t_l_tags(self, ctx, user: Optional[discord.User] = None, show_names=None):
+        """List all users who are allowed to edit a specific tag
+
+        Leave tag unfilled to get a list of all users who are able to edit any tag
+        """
+        if show_names != "--names":
+            show_names = False
+
+        tags = []
+        if user is not None:
+            for tag, tdata in (await self.config.user(user).allowed_tags()).items():
+                tags.append({'tag': tag, 'date': tdata.get('date', 0)})
+
+            if not tags:
+                return await ctx.send("No tags have been assigned to this user.")
+            tags.sort(key=lambda d: d['date'])
+            for page in pagify('\n'.join(f"{inline(d['tag'])}"
+                                         f" {datetime.fromtimestamp((d['date'])).strftime('%Y %b %-d')}"
+                                         for d in tags)):
+                await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
+        else:
+            for u_id, data in (await self.config.all_users()).items():
+                if (user := self.bot.get_user(u_id)):
+                    for tag, tdata in data.get('allowed_tags', {}).items():
+                        tags.append({'user': user, 'tag': tag, 'date': tdata.get('date', 0)})
+
+            if not tags:
+                return await ctx.send("No tags have been assigned to any user.")
+            tags.sort(key=lambda d: (d['tag'], d['date']))
+            for page in pagify('\n'.join(f"`{d['tag']}` {d['user'].name if show_names else d['user'].mention}"
+                                         f" {datetime.fromtimestamp((d['date'])).strftime('%Y %b %-d')}"
+                                         for d in tags)):
+                await ctx.send(page, allowed_mentions=discord.AllowedMentions(users=False))
+
     @mh_t_list.command(name='all')
     async def mh_t_l_all(self, ctx):
         """List all available tags sorted alphabetically by length"""
