@@ -159,10 +159,13 @@ class BayesGAMH(commands.Cog):
         await ctx.tick()
 
     @mh_tag.command(name='remove', aliases=['rm', 'delete', 'del'])
-    async def mh_t_remove(self, ctx, user: discord.User, *, tag):
+    async def mh_t_remove(self, ctx, user: discord.User, *, tag=None):
         """Remove an allowed tag from a user"""
         async with self.config.user(user).allowed_tags() as tags:
-            if tag in tags:
+            if tag is None:
+                if await get_user_confirmation(ctx, f"Are you sure you want to remove all allowed tags for {user}?"):
+                    tags.clear()
+            elif tag in tags:
                 tags.pop(tag)
                 async with self.config.user(user).subscriptions() as subs:
                     if tag in subs:
