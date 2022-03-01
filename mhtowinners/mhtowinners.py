@@ -19,9 +19,9 @@ class MhToWinners(commands.Cog):
         try:
             async with StatusManager(self.bot):
                 MhToWinnersRunner(site).run()
-        except Exception:
+        except Exception as e:
             await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            raise Exception
+            raise e
         await ctx.send('Okay, done!')
     
     @commands.command(pass_context=True)
@@ -31,7 +31,7 @@ class MhToWinners(commands.Cog):
         try:
             async with StatusManager(self.bot):
                 SbToWinnersRunner(site).run()
-        except Exception:
+        except Exception as e:
             await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            raise Exception
+            raise e
         await ctx.send('Okay, done!')

@@ -26,7 +26,7 @@ class VodsToSb(commands.Cog):
                 VodsToSbRunner(site, self.vod_params).run()
         except ReadTimeout:
             return await ctx.send('Whoops, the site is taking too long to respond, try again later')
-        except Exception:
+        except Exception as e:
             await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            raise Exception
+            raise e
         await ctx.send('Okay, done!')
