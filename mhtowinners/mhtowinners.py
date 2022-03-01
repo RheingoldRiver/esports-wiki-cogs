@@ -1,5 +1,6 @@
 import rivercogutils as utils
 from redbot.core import commands
+from tsutils.user_interaction import StatusManager
 
 from mhtowinners.mhtowinners_main import MhToWinnersRunner
 from mhtowinners.sbtowinners_main import SbToWinnersRunner
@@ -16,9 +17,11 @@ class MhToWinners(commands.Cog):
         await ctx.send('Okay, starting now!')
         site = await utils.login_if_possible(ctx, self.bot, 'lol')
         try:
-            MhToWinnersRunner(site).run()
-        except Exception as e:
-            return await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
+            async with StatusManager(self.bot):
+                MhToWinnersRunner(site).run()
+        except Exception:
+            await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
+            raise Exception
         await ctx.send('Okay, done!')
     
     @commands.command(pass_context=True)
@@ -26,7 +29,9 @@ class MhToWinners(commands.Cog):
         await ctx.send('Okay, starting now!')
         site = await utils.login_if_possible(ctx, self.bot, 'lol')
         try:
-            SbToWinnersRunner(site).run()
-        except Exception as e:
-            return await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
+            async with StatusManager(self.bot):
+                SbToWinnersRunner(site).run()
+        except Exception:
+            await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
+            raise Exception
         await ctx.send('Okay, done!')

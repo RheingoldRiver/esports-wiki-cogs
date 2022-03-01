@@ -25,6 +25,8 @@ class VodsToSb(commands.Cog):
             async with StatusManager(self.bot):
                 VodsToSbRunner(site, self.vod_params).run()
         except ReadTimeout:
-            await ctx.send('Whoops, the site is taking too long to respond, try again later')
-            return
+            return await ctx.send('Whoops, the site is taking too long to respond, try again later')
+        except Exception:
+            await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
+            raise Exception
         await ctx.send('Okay, done!')

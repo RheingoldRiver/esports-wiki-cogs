@@ -37,7 +37,6 @@ class VodsToSbRunner(object):
             'old_text': None,
         }
         for item in result:
-            # print(item['N_MatchInPage'])
             if current_page['page_name'] != item['SBPage']:
                 if current_page['page'] is not None:
                     self.save_page(current_page)
