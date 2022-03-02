@@ -23,10 +23,8 @@ class MhToWinners(commands.Cog):
         try:
             async with StatusManager(self.bot):
                 MhToWinnersRunner(site).run()
-        except Exception as e:
-            await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            print(e)
-            return
+        except ReadTimeout:
+            return await ctx.send('Whoops, the site is taking too long to respond, try again later')
         await ctx.send('Okay, done!')
     
     @commands.command(pass_context=True)
@@ -37,10 +35,8 @@ class MhToWinners(commands.Cog):
         try:
             async with StatusManager(self.bot):
                 SbToWinnersRunner(site).run()
-        except Exception as e:
-            await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            print(e)
-            return
+        except ReadTimeout:
+            return await ctx.send('Whoops, the site is taking too long to respond, try again later')
         await ctx.send('Okay, done!')
     
     @commands.command(pass_context=True)
@@ -56,8 +52,4 @@ class MhToWinners(commands.Cog):
                 VodsToSbRunner(site, vod_params).run()
         except ReadTimeout:
             return await ctx.send('Whoops, the site is taking too long to respond, try again later')
-        except Exception as e:
-            await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            print(e)
-            return
         await ctx.send('Okay, done!')
