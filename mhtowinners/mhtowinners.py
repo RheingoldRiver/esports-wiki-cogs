@@ -19,7 +19,7 @@ class MhToWinners(commands.Cog):
     async def mhtowinners(self, ctx):
         await ctx.send('Okay, starting now!')
         credentials = await utils.get_credentials(ctx, self.bot)
-        site = EsportsClient('lol', credentials, max_retries=1)
+        site = EsportsClient('lol', credentials=credentials, max_retries=1)
         try:
             async with StatusManager(self.bot):
                 MhToWinnersRunner(site).run()
@@ -31,7 +31,7 @@ class MhToWinners(commands.Cog):
     async def sbtowinners(self, ctx):
         await ctx.send('Okay, starting now!')
         credentials = await utils.get_credentials(ctx, self.bot)
-        site = EsportsClient('lol', credentials, max_retries=1)
+        site = EsportsClient('lol', credentials=credentials, max_retries=1)
         try:
             async with StatusManager(self.bot):
                 SbToWinnersRunner(site).run()
@@ -42,7 +42,7 @@ class MhToWinners(commands.Cog):
     @commands.command(pass_context=True)
     async def vodstosb(self, ctx):
         credentials = await utils.get_credentials(ctx, self.bot)
-        site = EsportsClient('lol', credentials, max_retries=1)
+        site = EsportsClient('lol', credentials=credentials, max_retries=1)
         
         vod_params = ['VodPB', 'VodGameStart', 'Vod', 'VodPostgame']
         
