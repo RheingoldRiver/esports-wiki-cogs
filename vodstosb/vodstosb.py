@@ -28,5 +28,6 @@ class VodsToSb(commands.Cog):
             return await ctx.send('Whoops, the site is taking too long to respond, try again later')
         except Exception as e:
             await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            raise e
+            print(e)
+            return
         await ctx.send('Okay, done!')

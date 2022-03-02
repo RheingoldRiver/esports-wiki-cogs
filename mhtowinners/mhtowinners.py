@@ -21,7 +21,8 @@ class MhToWinners(commands.Cog):
                 MhToWinnersRunner(site).run()
         except Exception as e:
             await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            raise e
+            print(e)
+            return
         await ctx.send('Okay, done!')
     
     @commands.command(pass_context=True)
@@ -33,5 +34,6 @@ class MhToWinners(commands.Cog):
                 SbToWinnersRunner(site).run()
         except Exception as e:
             await ctx.send('Exception encountered, if Fandom servers are slow please wait a while to retry')
-            raise e
+            print(e)
+            return
         await ctx.send('Okay, done!')
