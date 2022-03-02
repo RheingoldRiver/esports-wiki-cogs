@@ -1,5 +1,5 @@
 from redbot.core import commands
-import rivercogutils as utils
+from rivercogutils import utils
 from toornament_scraper.mena_creator import MenaCreator
 from toornament_scraper.ff_checker import FFChecker
 from toornament_scraper.mena_updater import MenaUpdater

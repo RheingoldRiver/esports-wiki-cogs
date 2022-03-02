@@ -5,7 +5,7 @@ from io import BytesIO
 from typing import Optional
 
 import aiohttp
-import rivercogutils as utils
+from rivercogutils import utils
 from mwrogue.auth_credentials import AuthCredentials
 from mwrogue.esports_client import EsportsClient
 from redbot.core import commands

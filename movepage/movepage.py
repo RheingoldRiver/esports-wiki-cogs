@@ -1,5 +1,5 @@
 from redbot.core import commands
-import rivercogutils as utils
+from rivercogutils import utils
 
 
 class MovePage(commands.Cog):

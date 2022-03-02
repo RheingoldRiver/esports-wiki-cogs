@@ -1,5 +1,5 @@
 from redbot.core import commands
-import rivercogutils as utils
+from rivercogutils import utils
 import mwparserfromhell, re
 from mwrogue.esports_client import EsportsClient
 
