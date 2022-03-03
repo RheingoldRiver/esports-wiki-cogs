@@ -17,18 +17,18 @@ class MhToWinners(commands.Cog):
     
     @commands.command(pass_context=True)
     async def mhtowinners(self, ctx):
-        self._do_the_thing(ctx, MhToWinnersRunner)
+        await self._do_the_thing(ctx, MhToWinnersRunner)
     
     @commands.command(pass_context=True)
     async def sbtowinners(self, ctx):
-        self._do_the_thing(ctx, SbToWinnersRunner)
+        await self._do_the_thing(ctx, SbToWinnersRunner)
     
     @commands.command(pass_context=True)
     async def vodstosb(self, ctx):
         vod_params = ['VodPB', 'VodGameStart', 'Vod', 'VodPostgame']
-        self._do_the_thing(ctx, VodsToSbRunner, vod_params)
+        await self._do_the_thing(ctx, VodsToSbRunner, vod_params)
 
-    def _do_the_thing(self, ctx, the_thing, *args):
+    async def _do_the_thing(self, ctx, the_thing, *args):
         await ctx.send('Okay, starting now!')
         credentials = await utils.get_credentials(ctx, self.bot)
         site = EsportsClient('lol', credentials=credentials,
