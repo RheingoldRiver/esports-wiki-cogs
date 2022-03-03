@@ -16,7 +16,7 @@ from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.commands import UserInputOptional
 from redbot.core.utils.chat_formatting import box, inline, pagify, spoiler
-from rivercogutils import login_if_possible
+from rivercogutils.utils import login_if_possible
 from tsutils.cogs.globaladmin import auth_check, has_perm
 from tsutils.helper_functions import repeating_timer
 from tsutils.user_interaction import cancellation_message, confirmation_message, get_user_confirmation, \
