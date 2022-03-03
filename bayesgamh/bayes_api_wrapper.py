@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -70,8 +71,9 @@ class BayesAPIWrapper:
                 if resp.status == 401 and allow_retry:
                     await self._ensure_login(force_relogin=True)
                     return await self._do_api_call(method, service, data, allow_retry=False)
-                elif resp.status == 429:
-                    raise BadRequestException("You requested too many games.")
+                elif resp.status == 429 and allow_retry:
+                    await asyncio.sleep(5)
+                    return await self._do_api_call(method, service, data, allow_retry=False)
                 resp.raise_for_status()
                 data = await resp.json()
         elif method == "POST":
