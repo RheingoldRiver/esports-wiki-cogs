@@ -32,6 +32,7 @@ class MhToWinners(commands.Cog):
         await ctx.send('Okay, starting now!')
         credentials = await utils.get_credentials(ctx, self.bot)
         site = EsportsClient('lol', credentials=credentials,
+                             max_retries_mwc=0,
                              max_retries=2, retry_interval=10)
         try:
             async with StatusManager(self.bot):
