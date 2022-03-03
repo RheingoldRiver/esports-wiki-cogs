@@ -1,5 +1,6 @@
 import lol_esports_parser
 import mwparserfromhell
+from mwcleric.errors import RetriedLoginAndStillFailed
 from mwrogue.auth_credentials import AuthCredentials
 from mwrogue.esports_client import EsportsClient
 
@@ -47,7 +48,10 @@ class MhToWinnersRunner(object):
             self.site.report_all_errors('mhtowinners')
             new_text = str(wikitext)
             if new_text != text:
-                self.site.save(page, new_text, summary=self.summary)
+                try:
+                    self.site.save(page, new_text, summary=self.summary)
+                except RetriedLoginAndStillFailed:
+                    pass
     
     def update_wikitext(self, wikitext, overview_page: str):
         for template in wikitext.filter_templates():

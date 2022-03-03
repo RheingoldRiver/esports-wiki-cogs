@@ -1,4 +1,5 @@
 import mwparserfromhell
+from mwcleric.errors import RetriedLoginAndStillFailed
 from mwrogue.auth_credentials import AuthCredentials
 from mwrogue.esports_client import EsportsClient
 
@@ -89,7 +90,10 @@ class SbToWinnersRunner:
     def save_page(self, page_dict):
         new_text = str(page_dict['wikitext'])
         if new_text != page_dict['old_text']:
-            self.site.save(page_dict['page'], new_text, summary=self.summary)
+            try:
+                self.site.save(page_dict['page'], new_text, summary=self.summary)
+            except RetriedLoginAndStillFailed:
+                pass
 
 
 if __name__ == '__main__':
