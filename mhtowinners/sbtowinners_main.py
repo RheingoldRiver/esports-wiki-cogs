@@ -80,8 +80,6 @@ class SbToWinnersRunner:
                             template.add("red", item['Team2'])
                         if not template.has("winner", ignore_empty=True):
                             template.add("winner", item['WinTeam'])
-                        if not template.has("mh"):
-                            template.add('mh', item['MatchHistory'])
         
         # we need to catch the last iteration too (assuming we actually did anything)
         if current_page['page'] is not None:
