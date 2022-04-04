@@ -113,8 +113,7 @@ class BayesGAMH(commands.Cog):
                                            if any(u_id in tags_to_uid[tag].union(tags_to_uid['ALL'])
                                                   for tag in game['tags'])
                                            and ('GAMH_DETAILS' in game['assets'] or not data['jsononly'])
-                                           and (set(game['tags']).intersection({*data['allowed_tags'], 'ALL'})
-                                                or has_perm('mhadmin', user, self.bot))],
+                                           and await self.has_access(user, *game['tags'])],
                                           key=lambda g: isoparse(g['createdAt']))]
                 try:
                     for page in pagify('\n\n'.join(msg)):
@@ -192,7 +191,7 @@ class BayesGAMH(commands.Cog):
 
         if tag is not None:
             for u_id, data in (await self.config.all_users()).items():
-                if (user := self.bot.get_user(u_id)) and tag in data.get('allowed_tags', {}):
+                if (user := self.bot.get_user(u_id)) and await self.has_access(user, tag):
                     users.append({'user': user, 'date': data['allowed_tags'][tag].get('date', 0)})
 
             if not users:
@@ -290,8 +289,7 @@ class BayesGAMH(commands.Cog):
 
         If limit is left blank, 50 games are sent.
         """
-        allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
+        if not await self.has_access(ctx.author, tag):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]]
@@ -304,8 +302,7 @@ class BayesGAMH(commands.Cog):
     @mh_query.command(name='new')
     async def mh_q_new(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
         """Get only games that aren't on the wiki yet"""
-        allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
+        if not await self.has_access(ctx.author, tag):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         if not games:
@@ -346,8 +343,7 @@ class BayesGAMH(commands.Cog):
 
         If limit is left blank, 50 games are sent.
         """
-        allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
+        if not self.has_access(ctx.author, tag):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         ret = [await self.format_game_long(game, ctx.author) for game in games[:limit][::-1]]
@@ -360,8 +356,7 @@ class BayesGAMH(commands.Cog):
     @mh_query2.command(name='new')
     async def mh_q2_new(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
         """Get only games that aren't on the wiki yet"""
-        allowed_tags = await self.config.user(ctx.author).allowed_tags()
-        if not (has_perm('mhadmin', ctx.author, self.bot) or tag in allowed_tags or 'ALL' in allowed_tags):
+        if not self.has_access(ctx.author, tag):
             return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
         games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
         if not games:
@@ -394,9 +389,7 @@ class BayesGAMH(commands.Cog):
                 if not await get_user_confirmation(ctx, f"Are you sure you want to subscribe"
                                                         f" to currently non-existant tag `{tag}`?"):
                     return await ctx.react_quietly("\N{CROSS MARK}")
-            elif not has_perm('mhadmin', ctx.author, self.bot) \
-                    and tag not in await self.config.user(ctx.author).allowed_tags() \
-                    and 'ALL' not in await self.config.user(ctx.author).allowed_tags():
+            elif not await self.has_access(ctx.author, tag):
                 return await send_cancellation_message(ctx, f"You cannot subscribe to tag `{tag}` as you don't"
                                                             f" have permission to view it. Contact a bot admin"
                                                             f" if you think this is an issue.")
@@ -550,7 +543,6 @@ class BayesGAMH(commands.Cog):
         no_perms = []
         invalid_ids = []
 
-        allowed_tags = await self.config.user(ctx.author).allowed_tags()
         async with self.config.invalid_games() as invalid_games:
             for rpgid in (rpgid.strip(',') for rpgid in rpgids):
                 try:
@@ -559,8 +551,7 @@ class BayesGAMH(commands.Cog):
                     invalid_ids.append(rpgid)
                     continue
 
-                if not (set(allowed_tags).intersection({*game['tags'], 'ALL'})
-                        or has_perm('mhadmin', ctx.author, self.bot)):
+                if not self.has_access(ctx.author, *game['tags']):
                     no_perms.append(rpgid)
                     continue
 
@@ -582,7 +573,6 @@ class BayesGAMH(commands.Cog):
         """Clean up tags"""
         did_action = False
 
-        allowed_tags = await self.config.user(ctx.author).allowed_tags()
         site = await login_if_possible(ctx, self.bot, 'lol')
         async with self.config.invalid_games() as invalid_games:
             for tag in (tag.strip() for tag in tags.split(',')):
@@ -654,3 +644,15 @@ class BayesGAMH(commands.Cog):
 
         old_ids = [row['RiotPlatformGameId'] for row in result]
         return [game for game in games if game['platformGameId'] not in old_ids]
+
+    async def has_access(self, user, tag=None, *tags):
+        tags = [tag] + list(tags)
+        if has_perm('mhadmin', user, self.bot) or user.id in self.bot.owner_ids:
+            return True
+        for gtag in tags:
+            for utag in await self.config.user(user).allowed_tags():
+                if utag == "ALL":
+                    return True
+                if utag == gtag or utag == gtag.split(" ")[0]:
+                    return True
+        return False
