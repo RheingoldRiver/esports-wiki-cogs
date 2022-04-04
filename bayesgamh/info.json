@@ -17,7 +17,7 @@
     "tsutils",
     "mwrogue",
     "mwcleric>=0.6.5",
-    "git+git://github.com/RheingoldRiver/rivercogutils"
+    "git+https://github.com/RheingoldRiver/rivercogutils"
   ],
   "tags": []
 }

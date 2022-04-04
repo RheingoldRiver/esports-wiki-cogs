@@ -12,7 +12,7 @@
   "required_cogs": {},
   "requirements": [
     "aiohttp",
-    "git+git://github.com/RheingoldRiver/rivercogutils",
+    "git+https://github.com/RheingoldRiver/rivercogutils",
     "mwrogue",
     "mwcleric",
     "mwparserfromhell>=0.6"
