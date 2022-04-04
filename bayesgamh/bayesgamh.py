@@ -543,6 +543,10 @@ class BayesGAMH(commands.Cog):
     @mh_cleanup.command(name='game', aliases=['games'])
     async def mh_cu_game(self, ctx, *rpgids):
         """Clean up single games"""
+        if not rpgids:
+            await ctx.send_help()
+            return
+
         no_perms = []
         invalid_ids = []
 
