@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Any, Dict, Iterable, List, Literal, Optional, TypedDict, Union
 
+import backoff
 from aiohttp import ClientResponseError, ClientSession
 from redbot.core.bot import Red
 from tsutils.errors import BadAPIKeyException, NoAPIKeyException
@@ -30,6 +31,10 @@ class GetGamesResponse(TypedDict):
     size: int
     count: int
     games: List[Game]
+
+
+class RateLimitException(Exception):
+    pass
 
 
 class BayesAPIWrapper:
@@ -59,6 +64,7 @@ class BayesAPIWrapper:
             self.access_token = data['accessToken']
             self.expires = datetime.now() + timedelta(seconds=data['expiresIn'] - 30)  # 30 second buffer to be safe
 
+    @backoff.on_exception(backoff.expo, RateLimitException, logger=None)
     async def _do_api_call(self, method: Literal['GET', 'POST'], service: str,
                            data: Dict[str, Any] = None, *, allow_retry: bool = True):
         """Make a single API call to emh-api.bayesesports.com"""
@@ -71,9 +77,8 @@ class BayesAPIWrapper:
                 if resp.status == 401 and allow_retry:
                     await self._ensure_login(force_relogin=True)
                     return await self._do_api_call(method, service, data, allow_retry=False)
-                elif resp.status == 429 and allow_retry:
-                    await asyncio.sleep(5)
-                    return await self._do_api_call(method, service, data, allow_retry=False)
+                elif resp.status == 429:
+                    raise RateLimitException()
                 resp.raise_for_status()
                 data = await resp.json()
         elif method == "POST":
