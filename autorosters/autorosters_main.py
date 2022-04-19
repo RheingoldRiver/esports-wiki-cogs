@@ -193,9 +193,9 @@ class AutoRostersRunner(object):
                                             self.rosters_data[team]["players"][player]["games_by_role"][role] += "y"
                                         else:
                                             self.rosters_data[team]["players"][player]["games_by_role"][role] += "n"
-                            else:
-                                for role in self.rosters_data[team]["players"][player]["games_by_role"]:
-                                    self.rosters_data[team]["players"][player]["games_by_role"][role] += "n"
+                                    continue
+                            for role in self.rosters_data[team]["players"][player]["games_by_role"]:
+                                self.rosters_data[team]["players"][player]["games_by_role"][role] += "n"
             for team in current_teams:
                 for player in self.rosters_data[team]["players"].keys():
                     for role in self.rosters_data[team]["players"][player]["games_by_role"]:
