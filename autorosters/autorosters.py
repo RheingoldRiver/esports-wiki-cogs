@@ -1,6 +1,6 @@
 from mwrogue.esports_client import EsportsClient
 from rivercogutils import utils
-from redbot.core import commands, utils as redutils
+from redbot.core import commands
 from asyncio import TimeoutError
 
 from .autorosters_main import AutoRostersRunner
