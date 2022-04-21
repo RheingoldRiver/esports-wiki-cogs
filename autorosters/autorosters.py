@@ -7,6 +7,8 @@ from .autorosters_main import AutoRostersRunner
 
 async def is_lol_staff(ctx) -> bool:
     staff_role = None
+    if not ctx.guild:
+        raise commands.UserFeedbackCheckFailure("You must be in a server to run this command!")
     for role in ctx.message.guild.roles:
         if role.name == "LoL-Staff":
             staff_role = role
@@ -42,4 +44,3 @@ class AutoRosters(commands.Cog):
         await ctx.send('Okay, done! **Remember the generated content has no coaches!**')
         await ctx.send(f'Here is the sandbox page with the new content: {sandbox_page}')
         await ctx.send(f'Here is where you should copy it: {rosters_page}')
-
