@@ -1,12 +1,12 @@
 from mwrogue.esports_client import EsportsClient
 from rivercogutils import utils
 from redbot.core import commands
-from asyncio import TimeoutError
 
 from .autorosters_main import AutoRostersRunner
 
 
 async def is_lol_staff(ctx) -> bool:
+    staff_role = None
     for role in ctx.message.guild.roles:
         if role.name == "LoL-Staff":
             staff_role = role
@@ -26,17 +26,20 @@ class AutoRosters(commands.Cog):
     @commands.check(is_lol_staff)
     async def autorosters(self, ctx, *, overview_page):
         """Generate team rosters for the specified tournament"""
-        def check(msg):
-            return msg.author == ctx.author and msg.channel == ctx.channel
-        await ctx.send("Tabs: (Eg. `LEC 2022`)")
-        try:
-            tabs = await self.bot.wait_for("message", check=check, timeout=60)
-        except TimeoutError:
-            return
         await ctx.send('Okay, starting now!')
         credentials = await utils.get_credentials(ctx, self.bot)
         site = EsportsClient('lol', credentials=credentials,
                              max_retries_mwc=0,
                              max_retries=2, retry_interval=10)
-        AutoRostersRunner(site, overview_page, tabs.content).run()
-        await ctx.send('Okay, done!')
+        overview_page = site.cache.get_target(overview_page)
+        if not site.client.pages[overview_page].exists:
+            return await ctx.send('The tournament page does not exist!')
+        AutoRostersRunner(site, overview_page).run()
+        username = site.credentials.username
+        username = username.split('@')[0] if "@" in username else username
+        sandbox_page = f"User:{username}/Team Rosters Sandbox"
+        rosters_page = f"{overview_page}/Team Rosters"
+        await ctx.send('Okay, done! **Remember the generated content has no coaches!**')
+        await ctx.send(f'Here is the sandbox page with the new content: `{sandbox_page}`')
+        await ctx.send(f'Here is where you should copy it: `{rosters_page}`')
+
