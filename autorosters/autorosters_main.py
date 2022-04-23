@@ -5,7 +5,8 @@ import re
 
 
 class AutoRostersRunner(object):
-    PAGE_HEADER = "{{{{Tabs:{}}}}}{{{{TOCFlat}}}}"
+    PAGE_TABS = "{{{{Tabs:{}}}}}"
+    PAGE_HEADER = "{{TOCFlat}}"
     TEAM_TEXT = "\n\n==={{{{team|{}}}}}===\n{{{{ExtendedRoster{}{}\n}}}}"
     PLAYER_TEXT = "\n|{{{{ExtendedRoster/Line{}{}\n{} }}}}"
 
@@ -23,6 +24,7 @@ class AutoRostersRunner(object):
             "Bot": 4,
             "Support": 5
         }
+        self.warnings = []
 
     def run(self):
         self.get_tabs()
@@ -35,12 +37,13 @@ class AutoRostersRunner(object):
         self.process_game_data()
         output = self.make_output(players_data)
         self.save_page(output)
+        return self.warnings
 
     def get_tabs(self):
         page = self.site.client.pages[self.overview_page]
         page_text = page.text()
         tabs = re.search(r'{{Tabs:(.*?)}}', page_text)
-        self.tabs = tabs[1] if tabs else ""
+        self.tabs = tabs[1] if tabs else None
 
     def query_matchschedule_data(self):
         matchschedule_data = self.site.cargo_client.query(
@@ -261,7 +264,12 @@ class AutoRostersRunner(object):
         return ret
 
     def make_output(self, players_data):
-        output = self.PAGE_HEADER.format(self.tabs)
+        output = ""
+        if self.tabs:
+            output += self.PAGE_TABS.format(self.tabs)
+        else:
+            self.warnings.append("There are no tabs on the overview page!")
+        output += self.PAGE_HEADER
         sorted_data = self.get_order()
         for team in sorted_data["teams"]:
             players_text = ""
