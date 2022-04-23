@@ -36,7 +36,7 @@ class AutoRosters(commands.Cog):
         overview_page = site.cache.get_target(overview_page)
         if not site.client.pages[overview_page].exists:
             return await ctx.send('The tournament page does not exist!')
-        AutoRostersRunner(site, overview_page).run()
+        warnings = AutoRostersRunner(site, overview_page).run()
         username = site.credentials.username
         username = username.split('@')[0] if "@" in username else username
         sandbox_page = f"\nhttps://lol.fandom.com/wiki/User:{username}/Team_Rosters_Sandbox".replace(" ", "_")
@@ -44,3 +44,6 @@ class AutoRosters(commands.Cog):
         await ctx.send('Okay, done! **Remember the generated content has no coaches!**')
         await ctx.send(f'Here is the sandbox page with the new content: {sandbox_page}')
         await ctx.send(f'Here is where you should copy it: {rosters_page}')
+        if warnings:
+            for warning in warnings:
+                await ctx.send(f"**{warning}**")

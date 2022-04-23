@@ -5,7 +5,8 @@ import re
 
 
 class AutoRostersRunner(object):
-    PAGE_HEADER = "{{{{Tabs:{}}}}}{{{{TOCFlat}}}}"
+    PAGE_TABS = "{{{{Tabs:{}}}}}"
+    PAGE_HEADER = "{{TOCFlat}}"
     TEAM_TEXT = "\n\n==={{{{team|{}}}}}===\n{{{{ExtendedRoster{}{}\n}}}}"
     PLAYER_TEXT = "\n|{{{{ExtendedRoster/Line{}{}\n{} }}}}"
 
@@ -23,6 +24,7 @@ class AutoRostersRunner(object):
             "Bot": 4,
             "Support": 5
         }
+        self.warnings = []
 
     def run(self):
         self.get_tabs()
@@ -35,11 +37,13 @@ class AutoRostersRunner(object):
         self.process_game_data()
         output = self.make_output(players_data)
         self.save_page(output)
+        return self.warnings
 
     def get_tabs(self):
         page = self.site.client.pages[self.overview_page]
         page_text = page.text()
-        self.tabs = re.search(r'{{Tabs:(.*?)}}', page_text).group(1) or ""
+        tabs = re.search(r'{{Tabs:(.*?)}}', page_text)
+        self.tabs = tabs[1] if tabs else None
 
     def query_matchschedule_data(self):
         matchschedule_data = self.site.cargo_client.query(
@@ -47,7 +51,7 @@ class AutoRostersRunner(object):
             fields=["MS.MatchId", "MSG.GameId", "MS.FF=MSFF", "MSG.FF=MSGFF", "MS.BestOf", "MS.Team1Final",
                     "MS.Team2Final", "MS.Team1", "MS.Team2"],
             join_on="MS.MatchId=MSG.MatchId",
-            where=f"MS.OverviewPage = '{self.overview_page}'",
+            where=f"MS.OverviewPage = '{self.overview_page}' AND MS.Team1 != \"TBD\" AND MS.Team2 != \"TBD\"",
             order_by="MS.N_Page, MS.N_MatchInPage, MSG.N_GameInMatch"
         )
         return matchschedule_data
@@ -196,12 +200,12 @@ class AutoRostersRunner(object):
                             player["games_by_role"][role] += f"{'n' * math.ceil(int(match['best_of']) / 2)},"
                 continue
             for game in match["games"].values():
-                game_sg_players = game["sg_data"]["players"]
                 for team in current_teams:
                     rd_team = self.rosters_data[team]
                     for player in rd_team["players"].keys():
                         game_rd_player = rd_team["players"][player]
                         if "sg_data" in game.keys():
+                            game_sg_players = game["sg_data"]["players"]
                             if player in game_sg_players.keys():
                                 game_sg_player = game_sg_players[player]
                                 if team == self.alt_teamnames[game_sg_player["team"]]:
@@ -260,7 +264,12 @@ class AutoRostersRunner(object):
         return ret
 
     def make_output(self, players_data):
-        output = self.PAGE_HEADER.format(self.tabs)
+        output = ""
+        if self.tabs:
+            output += self.PAGE_TABS.format(self.tabs)
+        else:
+            self.warnings.append("There are no tabs on the overview page!")
+        output += self.PAGE_HEADER
         sorted_data = self.get_order()
         for team in sorted_data["teams"]:
             players_text = ""
