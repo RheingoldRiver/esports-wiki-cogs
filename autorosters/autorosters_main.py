@@ -37,7 +37,16 @@ class AutoRostersRunner(object):
         self.process_game_data()
         output = self.make_output(players_data)
         self.save_page(output)
-        return self.warnings
+
+    async def send_warnings(self, ctx):
+        if len(self.warnings) == 0:
+            return
+        warning_text = '\n  '.join(self.warnings)
+        ret = f"**Warnings:**\n{warning_text}"
+        await ctx.send(ret)
+        
+        # in case we want to reuse the same runner
+        self.warnings = []
 
     def get_tabs(self):
         page = self.site.client.pages[self.overview_page]
