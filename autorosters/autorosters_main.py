@@ -1,3 +1,5 @@
+from typing import Optional
+
 from esports_cog_utils.task_runner import TaskRunner
 from mwrogue.esports_client import EsportsClient
 from mwrogue.auth_credentials import AuthCredentials
@@ -10,7 +12,7 @@ class AutoRostersRunner(TaskRunner):
     PAGE_HEADER = "{{TOCFlat}}"
     TEAM_TEXT = "\n\n==={{{{team|{}}}}}===\n{{{{ExtendedRoster{}{}\n}}}}"
     PLAYER_TEXT = "\n|{{{{ExtendedRoster/Line{}{}\n{} }}}}"
-
+    
     role_numbers = {
         "Top": 1,
         "Jungle": 2,
@@ -18,16 +20,16 @@ class AutoRostersRunner(TaskRunner):
         "Bot": 4,
         "Support": 5
     }
-
-    def __init__(self, site: EsportsClient, overview_page):
+    
+    def __init__(self, site: EsportsClient, overview_page: str):
         super().__init__()
         self.site = site
         self.overview_page = overview_page
-        self.tabs = str
+        self.tabs: Optional[str] = None
         self.match_data = {}
         self.alt_teamnames = {}
         self.rosters_data = {}
-
+    
     def run(self):
         self.get_tabs()
         matchschedule_data = self.query_matchschedule_data()
@@ -39,13 +41,13 @@ class AutoRostersRunner(TaskRunner):
         self.process_game_data()
         output = self.make_output(players_data)
         self.save_page(output)
-
+    
     def get_tabs(self):
         page = self.site.client.pages[self.overview_page]
         page_text = page.text()
         tabs = re.search(r'{{Tabs:(.*?)}}', page_text)
         self.tabs = tabs[1] if tabs else None
-
+    
     def query_matchschedule_data(self):
         matchschedule_data = self.site.cargo_client.query(
             tables="MatchSchedule=MS, MatchScheduleGame=MSG",
@@ -56,7 +58,7 @@ class AutoRostersRunner(TaskRunner):
             order_by="MS.N_Page, MS.N_MatchInPage, MSG.N_GameInMatch"
         )
         return matchschedule_data
-
+    
     @staticmethod
     def get_where_scoreboard_data(matchschedule_data):
         where = "SG.GameId IN ({})"
@@ -66,7 +68,7 @@ class AutoRostersRunner(TaskRunner):
                 gameids_to_query.append(f"\"{game['GameId']}\"")
         where = where.format(" ,".join(gameids_to_query))
         return where
-
+    
     def query_scoreboard_data(self, matchschedule_data):
         where = self.get_where_scoreboard_data(matchschedule_data)
         scoreboard_data = self.site.cargo_client.query(
@@ -78,7 +80,7 @@ class AutoRostersRunner(TaskRunner):
             join_on="SG.GameId=SP.GameId"
         )
         return scoreboard_data
-
+    
     def process_matchschedule_data(self, matchschedule_data):
         for match in matchschedule_data:
             if not self.match_data.get(match["MatchId"]):
@@ -89,7 +91,7 @@ class AutoRostersRunner(TaskRunner):
                 self.alt_teamnames[match["Team1"]] = match["Team1Final"]
                 self.alt_teamnames[match["Team2"]] = match["Team2Final"]
             self.match_data[match["MatchId"]]["games"][match["GameId"]] = {"msg_data": match}
-
+    
     def get_player_id(self, player):
         response = self.site.cargo_client.query(
             tables="Players=P, PlayerRedirects=PR",
@@ -100,10 +102,10 @@ class AutoRostersRunner(TaskRunner):
         if not response:
             return player
         return response[0]["Player"]
-
+    
     def process_scoreboard_data(self, scoreboard_data):
         player_ids_cache = {}
-
+        
         for scoreboard in scoreboard_data:
             game_data = self.match_data[scoreboard["MatchId"]]["games"][scoreboard["GameId"]]
             if "sg_data" not in game_data.keys():
@@ -118,7 +120,7 @@ class AutoRostersRunner(TaskRunner):
             game_data["sg_data"]["players"][player_page] = {"role": scoreboard["IngameRole"],
                                                             "team": scoreboard["Team"],
                                                             "link": player_page}
-
+    
     def get_players_roles_data(self):
         for team, team_data in self.rosters_data.items():
             for player, player_data in team_data["players"].items():
@@ -130,7 +132,7 @@ class AutoRostersRunner(TaskRunner):
                     rolen_short = f"r{i + 1}"
                     player["roles_data"][rolen] = role
                     player["games_by_role"][rolen_short] = ""
-
+    
     def initialize_roster_data(self):
         for match in self.match_data.values():
             for game in match["games"].values():
@@ -146,11 +148,11 @@ class AutoRostersRunner(TaskRunner):
                         if player["role"] not in team_players[player["link"]]["roles"]:
                             team_players[player["link"]]["roles"].append(player["role"])
         self.get_players_roles_data()
-
+    
     @staticmethod
     def get_where_player_data(rosters_data):
         where = "PR.AllName IN ({})"
-
+        
         players = {}
         for team in rosters_data.values():
             for player in team["players"].keys():
@@ -158,10 +160,10 @@ class AutoRostersRunner(TaskRunner):
                     players[player] = f"\"{player}\""
         where = where.format(" ,".join(players.values()))
         return where
-
+    
     def get_player_data(self):
         players_data = {}
-
+        
         where = self.get_where_player_data(self.rosters_data)
         response = self.site.cargo_client.query(
             tables="Players=P, PlayerRedirects=PR, Alphabets=A",
@@ -170,13 +172,13 @@ class AutoRostersRunner(TaskRunner):
             fields=["CONCAT(CASE WHEN A.IsTransliterated=\"1\" THEN P.NameFull ELSE P.Name END)=name", "P.Player",
                     "P.NationalityPrimary=NP", "P.Country", "P.Residency"]
         )
-
+        
         for player_data in response:
             players_data[player_data["Player"]] = [{"flag": player_data["NP"] or player_data["Country"]},
                                                    {"res": player_data["Residency"]}, {"player": player_data["Player"]},
                                                    {"name": player_data["name"].replace("&amp;nbsp;", " ")}]
         return players_data
-
+    
     def add_team_vs(self, current_teams):
         n_teams = {}
         for team in current_teams:
@@ -187,7 +189,7 @@ class AutoRostersRunner(TaskRunner):
             n_teams[team] = len(self.rosters_data[team]["teamsvs"]) + 1
         self.rosters_data[current_teams[0]]["teamsvs"].append({f"team{n_teams[current_teams[0]]}": current_teams[1]})
         self.rosters_data[current_teams[1]]["teamsvs"].append({f"team{n_teams[current_teams[1]]}": current_teams[0]})
-
+    
     def process_game_data(self):
         for match in self.match_data.values():
             current_teams = [self.alt_teamnames[match["team1"]], self.alt_teamnames[match["team2"]]]
@@ -232,7 +234,7 @@ class AutoRostersRunner(TaskRunner):
             for player in team_data["players"].values():
                 for role, role_data in player["games_by_role"].items():
                     player["games_by_role"][role] = role_data[:-1]
-
+    
     def get_order(self):
         sorted_teams = sorted(list(self.rosters_data.keys()))
         sorted_data = {"teams": sorted_teams, "players": {}}
@@ -245,7 +247,7 @@ class AutoRostersRunner(TaskRunner):
                 team_players[player] = self.role_numbers[player_data["roles"][0]]
             sorted_data["players"][team] = sorted(team_players.items(), key=lambda x: x[1])
         return sorted_data
-
+    
     @staticmethod
     def concat_args(data):
         ret = ''
@@ -254,7 +256,7 @@ class AutoRostersRunner(TaskRunner):
             lookup = []
             for k, v in data.items():
                 lookup.append({k: v})
-
+        
         for pair in lookup:
             pair: dict
             for key in pair.keys():
@@ -263,7 +265,7 @@ class AutoRostersRunner(TaskRunner):
                 else:
                     ret = ret + '|{}={}'.format(key, str(pair[key]))
         return ret
-
+    
     def make_output(self, players_data):
         output = ""
         if self.tabs:
@@ -289,7 +291,7 @@ class AutoRostersRunner(TaskRunner):
             teamsvs = self.concat_args(self.rosters_data[team]["teamsvs"])
             output += self.TEAM_TEXT.format(team, teamsvs, players_text)
         return output
-
+    
     def save_page(self, output):
         username = self.site.credentials.username
         username = username.split('@')[0] if "@" in username else username
