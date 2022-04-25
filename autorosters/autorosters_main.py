@@ -1,30 +1,32 @@
+from esports_cog_utils.task_runner import TaskRunner
 from mwrogue.esports_client import EsportsClient
 from mwrogue.auth_credentials import AuthCredentials
 import math
 import re
 
 
-class AutoRostersRunner(object):
+class AutoRostersRunner(TaskRunner):
     PAGE_TABS = "{{{{Tabs:{}}}}}"
     PAGE_HEADER = "{{TOCFlat}}"
     TEAM_TEXT = "\n\n==={{{{team|{}}}}}===\n{{{{ExtendedRoster{}{}\n}}}}"
     PLAYER_TEXT = "\n|{{{{ExtendedRoster/Line{}{}\n{} }}}}"
 
+    role_numbers = {
+        "Top": 1,
+        "Jungle": 2,
+        "Mid": 3,
+        "Bot": 4,
+        "Support": 5
+    }
+
     def __init__(self, site: EsportsClient, overview_page):
+        super().__init__()
         self.site = site
         self.overview_page = overview_page
         self.tabs = str
         self.match_data = {}
         self.alt_teamnames = {}
         self.rosters_data = {}
-        self.role_numbers = {
-            "Top": 1,
-            "Jungle": 2,
-            "Mid": 3,
-            "Bot": 4,
-            "Support": 5
-        }
-        self.warnings = []
 
     def run(self):
         self.get_tabs()
@@ -37,16 +39,6 @@ class AutoRostersRunner(object):
         self.process_game_data()
         output = self.make_output(players_data)
         self.save_page(output)
-
-    async def send_warnings(self, ctx):
-        if len(self.warnings) == 0:
-            return
-        warning_text = '\n  '.join(self.warnings)
-        ret = f"**Warnings:**\n{warning_text}"
-        await ctx.send(ret)
-        
-        # in case we want to reuse the same runner
-        self.warnings = []
 
     def get_tabs(self):
         page = self.site.client.pages[self.overview_page]
