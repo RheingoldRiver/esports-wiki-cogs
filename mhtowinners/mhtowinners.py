@@ -1,6 +1,6 @@
+from esports_cog_utils.utils import get_credentials
 from mwrogue.esports_client import EsportsClient
 from requests import ReadTimeout
-from rivercogutils import utils
 from redbot.core import commands
 from tsutils.user_interaction import StatusManager
 
@@ -30,7 +30,7 @@ class MhToWinners(commands.Cog):
 
     async def _do_the_thing(self, ctx, the_thing, *args):
         await ctx.send('Okay, starting now!')
-        credentials = await utils.get_credentials(ctx, self.bot)
+        credentials = await get_credentials(ctx, self.bot)
         site = EsportsClient('lol', credentials=credentials,
                              max_retries_mwc=0,
                              max_retries=2, retry_interval=10)

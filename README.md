@@ -24,6 +24,10 @@ It's suggested to use a unique bot password for this that you don't also use for
 There is one bot password per installation, so users will send edits as you when using these cogs.
 
 ## Development
-You will need to use the following repo: https://github.com/RheingoldRiver/rivercogutils
+You will need to install [esports-cog-utils](https://pypi.org/project/esports-cog-utils/):
 
-Please try and keep all global Red-related dependencies there. Dependencies unrelated to Red may belong in river_mwclient instead: https://github.com/RheingoldRiver/river_mwclient
+```
+pip install esports-cog-utils
+```
+
+Please try and keep all global Red-related dependencies there. Dependencies unrelated to Red may belong in [mwcleric](https://github.com/RheingoldRiver/mwcleric) or [mwrogue](https://github.com/RheingoldRiver/mwrogue) instead.

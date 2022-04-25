@@ -1,5 +1,5 @@
+from esports_cog_utils.utils import login_if_possible
 from redbot.core import commands
-from rivercogutils import utils
 from .fncheckresults_main import check_results
 
 
@@ -13,7 +13,7 @@ class FnCheckResults(commands.Cog):
         
     @commands.command(pass_context=True)
     async def fncheckresults(self, ctx, *, title):
-        site = await utils.login_if_possible(ctx, self.bot, 'fortnite-esports')
+        site = await login_if_possible(ctx, self.bot, 'fortnite-esports')
         await ctx.send('Okay, starting!')
         result = check_results(site, title)
         if len(result) == 0:

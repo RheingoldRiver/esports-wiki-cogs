@@ -5,7 +5,7 @@ from io import BytesIO
 from typing import Optional
 
 import aiohttp
-from rivercogutils import utils
+from esports_cog_utils.utils import login_if_possible
 from mwrogue.auth_credentials import AuthCredentials
 from mwrogue.esports_client import EsportsClient
 from redbot.core import commands
@@ -63,7 +63,7 @@ class PatchUpdate(commands.Cog):
     @patchupdate.command()
     async def championstats(self, ctx, version=None):
         await ctx.send("Okay, starting!")
-        site = await utils.login_if_possible(ctx, self.bot, 'lol')
+        site = await login_if_possible(ctx, self.bot, 'lol')
         async with ctx.typing():
             await updatestats(site, "champion", version)
         await ctx.send("Okay, done!")
@@ -71,7 +71,7 @@ class PatchUpdate(commands.Cog):
     @patchupdate.command()
     async def itemstats(self, ctx, version=None):
         await ctx.send("Okay, starting!")
-        site = await utils.login_if_possible(ctx, self.bot, 'lol')
+        site = await login_if_possible(ctx, self.bot, 'lol')
         async with ctx.typing():
             await updatestats(site, "item", version)
         await ctx.send("Okay, done!")

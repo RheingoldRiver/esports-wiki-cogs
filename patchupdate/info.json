@@ -12,7 +12,7 @@
   "required_cogs": {},
   "requirements": [
     "aiohttp",
-    "git+https://github.com/RheingoldRiver/rivercogutils",
+    "esports-cog-utils",
     "mwrogue",
     "mwcleric",
     "mwparserfromhell>=0.6"

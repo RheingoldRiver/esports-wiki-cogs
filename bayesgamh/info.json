@@ -17,7 +17,7 @@
     "tsutils",
     "mwrogue",
     "mwcleric>=0.6.5",
-    "git+https://github.com/RheingoldRiver/rivercogutils"
+    "esports-cog-utils"
   ],
   "tags": []
 }

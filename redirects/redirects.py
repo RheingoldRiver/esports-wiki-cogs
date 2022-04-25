@@ -1,7 +1,6 @@
-from redbot.core import commands
-from rivercogutils import utils
-import mwparserfromhell, re
+from esports_cog_utils.utils import login_if_possible
 from mwrogue.esports_client import EsportsClient
+from redbot.core import commands
 
 
 class Redirects(commands.Cog):
@@ -17,7 +16,7 @@ class Redirects(commands.Cog):
     
     @redirects.command(pass_context=True)
     async def double(self, ctx, wiki):
-        site = await utils.login_if_possible(ctx, self.bot, wiki)
+        site = await login_if_possible(ctx, self.bot, wiki)
         site: EsportsClient
         if site is None:
             return

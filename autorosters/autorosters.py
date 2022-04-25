@@ -1,5 +1,5 @@
 from mwrogue.esports_client import EsportsClient
-from rivercogutils import utils
+from esports_cog_utils import utils
 from redbot.core import commands
 
 from .autorosters_main import AutoRostersRunner

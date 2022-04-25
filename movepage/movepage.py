@@ -1,5 +1,5 @@
+from esports_cog_utils.utils import login_if_possible
 from redbot.core import commands
-from rivercogutils import utils
 
 
 class MovePage(commands.Cog):
@@ -11,7 +11,7 @@ class MovePage(commands.Cog):
     
     @commands.command()
     async def move(self, ctx, wiki, p1, p2):
-        site = await utils.login_if_possible(ctx, self.bot, wiki)
+        site = await login_if_possible(ctx, self.bot, wiki)
         if site is None:
             return
         p1 = p1[0].upper() + p1[1:]
