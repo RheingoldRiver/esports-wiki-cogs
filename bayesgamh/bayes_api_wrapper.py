@@ -1,11 +1,14 @@
-import asyncio
+import json
 import logging
+import os
 from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Any, Dict, Iterable, List, Literal, Optional, TypedDict, Union
 
 import backoff
+from aiofiles import open as aopen
 from aiohttp import ClientResponseError, ClientSession
+from redbot.core import data_manager
 from redbot.core.bot import Red
 from tsutils.errors import BadAPIKeyException, NoAPIKeyException
 
@@ -37,6 +40,10 @@ class RateLimitException(Exception):
     pass
 
 
+def _data_file(file_name: str) -> str:
+    return os.path.join(str(data_manager.cog_data_path(raw_name='padinfo')), file_name)
+
+
 class BayesAPIWrapper:
     def __init__(self, bot: Red, session: ClientSession):
         self.bot = bot
@@ -44,11 +51,20 @@ class BayesAPIWrapper:
         self.session = session
 
         self.access_token = None
+        self.refresh_token = None
         self.expires = datetime.min
+
+    async def _save_login(self):
+        async with aopen(_data_file('keys.json'), 'w+') as f:
+            await f.write(json.dumps({
+                'accessToken': self.access_token,
+                'refreshToken': self.refresh_token,
+                'expiresIn': self.expires.timestamp()
+            }))
 
     async def _ensure_login(self, force_relogin: bool = False) -> None:
         """Ensure that the access_token is recent and valid"""
-        if self.access_token is None or force_relogin:
+        if force_relogin:
             keys = await self.bot.get_shared_api_tokens("bayes")
             if not ("username" in keys and "password" in keys):
                 raise NoAPIKeyException((await self.bot.get_valid_prefixes())[0]
@@ -62,7 +78,28 @@ class BayesAPIWrapper:
                                              + f"set api bayes username <USERNAME> password <PASSWORD>")
                 raise
             self.access_token = data['accessToken']
-            self.expires = datetime.now() + timedelta(seconds=data['expiresIn'] - 30)  # 30 second buffer to be safe
+            self.refresh_token = data['refreshToken']
+            self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
+        elif self.access_token is None:
+            try:
+                async with aopen(_data_file('keys.json')) as f:
+                    data = json.loads(await f.read())
+            except FileNotFoundError:
+                return await self._ensure_login(True)
+            self.access_token = data['accessToken']
+            self.refresh_token = data['refreshToken']
+            self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
+            if self.expires <= datetime.now():
+                return await self._ensure_login(False)
+        elif self.expires <= datetime.now():
+            data = await self._do_api_call('POST', 'login/refresh_token',
+                                           {'refreshToken': self.refresh_token},
+                                           ensure_keys=['accessToken', 'expiresIn'])
+            self.access_token = data['accessToken']
+            self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
+        else:
+            return
+        await self._save_login()
 
     @backoff.on_exception(backoff.expo, RateLimitException, logger=None)
     async def _do_api_call(self, method: Literal['GET', 'POST'], service: str,
