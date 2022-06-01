@@ -3,9 +3,9 @@ import json
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from io import BytesIO
-from typing import Any, List, NoReturn, Optional
+from typing import Any, Callable, Coroutine, Iterable, List, NoReturn, Optional, Sequence
 
 import aiohttp
 import discord
@@ -13,16 +13,19 @@ from dateutil.parser import isoparse
 from discord import DMChannel, TextChannel, User
 from esports_cog_utils.utils import login_if_possible
 from mwrogue.esports_client import EsportsClient
+from pytz import utc
 from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.commands import UserInputOptional
 from redbot.core.utils.chat_formatting import box, inline, pagify, spoiler
 from tsutils.cogs.globaladmin import auth_check, has_perm
+from tsutils.errors import ClientInlineTextException
 from tsutils.helper_functions import repeating_timer
 from tsutils.user_interaction import cancellation_message, confirmation_message, get_user_confirmation, \
     send_cancellation_message
 
-from bayesgamh.bayes_api_wrapper import AssetType, BayesAPIWrapper, Game
+from bayesgamh.bayes_api_wrapper import AssetType, BayesAPIWrapper, Game, Tag
+from bayesgamh.converters import DateConverter
 from bayesgamh.errors import BadRequestException
 
 logger = logging.getLogger('red.esports-wiki-cogs.bayesgamh')
@@ -302,18 +305,29 @@ class BayesGAMH(commands.Cog):
     @mh_query.command(name='new')
     async def mh_q_new(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
         """Get only games that aren't on the wiki yet"""
-        if not await self.has_access(ctx.author, tag):
-            return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
-        games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
-        if not games:
-            return await ctx.send(f"There are no games with tag `{tag}`."
-                                  f" Make sure the tag is valid and correctly cased.")
-
-        invalid_games = await self.config.invalid_games()
         site = await login_if_possible(ctx, self.bot, 'lol')
-        games = await self.filter_new(site, games)
-        ret = [await self.format_game(game, ctx.author) for game in games[:limit][::-1]
-               if game['platformGameId'] not in invalid_games]
+
+        async def filt(games: Sequence[Game]) -> Iterable[Game]:
+            return await self.filter_new(site, games)
+
+        ret = [await self.format_game(game, ctx.author) for game in
+               await self.mh_game_filter(ctx, tag, filt, limit)]
+
+        if not ret:
+            return await ctx.send(f"There are no new games with tag `{tag}`.")
+
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
+            await ctx.send(page)
+
+    @mh_query.command(name='since')
+    async def mh_q_since(self, ctx, date: DateConverter, limit: UserInputOptional[int] = 50, *, tag):
+        """Get only games since a specific date"""
+
+        async def filt(games: Iterable[Game]) -> Iterable[Game]:
+            return (game for game in games if isoparse(game['createdAt']) > datetime.combine(date, dt_time(), utc))
+
+        ret = [await self.format_game(game, ctx.author) for game in
+               await self.mh_game_filter(ctx, tag, filt, limit)]
 
         if not ret:
             return await ctx.send(f"There are no new games with tag `{tag}`.")
@@ -333,7 +347,6 @@ class BayesGAMH(commands.Cog):
         await ctx.send(file=discord.File(BytesIO(await self.api.get_asset(game_id, asset)), asset + '.json'))
 
     @mhtool.group(name='query2')
-    @commands.dm_only()
     async def mh_query2(self, ctx):
         """Slow query commands"""
 
@@ -343,10 +356,8 @@ class BayesGAMH(commands.Cog):
 
         If limit is left blank, 50 games are sent.
         """
-        if not self.has_access(ctx.author, tag):
-            return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
-        games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
-        ret = [await self.format_game_long(game, ctx.author) for game in games[:limit][::-1]]
+        ret = [await self.format_game_long(game, ctx.author) for game in
+               await self.mh_game_filter(ctx, tag, None, limit)]
         if not ret:
             return await ctx.send(f"There are no games with tag `{tag}`."
                                   f" Make sure the tag is valid and correctly cased.")
@@ -356,24 +367,49 @@ class BayesGAMH(commands.Cog):
     @mh_query2.command(name='new')
     async def mh_q2_new(self, ctx, limit: UserInputOptional[int] = 50, *, tag):
         """Get only games that aren't on the wiki yet"""
-        if not self.has_access(ctx.author, tag):
-            return await ctx.send(f"You do not have permission to query the tag `{tag}`.")
-        games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
-        if not games:
-            return await ctx.send(f"There are no games with tag `{tag}`."
-                                  f" Make sure the tag is valid and correctly cased.")
-
-        invalid_games = await self.config.invalid_games()
         site = await login_if_possible(ctx, self.bot, 'lol')
-        games = await self.filter_new(site, games)
-        ret = [await self.format_game_long(game, ctx.author) for game in games[:limit][::-1]
-               if game['platformGameId'] not in invalid_games]
+
+        async def filt(games: Sequence[Game]) -> Iterable[Game]:
+            return await self.filter_new(site, games)
+
+        ret = [await self.format_game_long(game, ctx.author) for game in
+               await self.mh_game_filter(ctx, tag, filt, limit)]
 
         if not ret:
             return await ctx.send(f"There are no new games with tag `{tag}`.")
 
         for page in pagify('\n\n'.join(ret), delims=['\n\n']):
             await ctx.send(page)
+
+    @mh_query2.command(name='since')
+    async def mh_q2_since(self, ctx, date: DateConverter, limit: UserInputOptional[int] = 50, *, tag):
+        """Get only games since a specific date"""
+
+        async def filt(games: Iterable[Game]) -> Iterable[Game]:
+            return (game for game in games if isoparse(game['createdAt']) > datetime.combine(date, dt_time(), utc))
+
+        ret = [await self.format_game_long(game, ctx.author) for game in
+               await self.mh_game_filter(ctx, tag, filt, limit)]
+
+        if not ret:
+            return await ctx.send(f"There are no new games with tag `{tag}`.")
+
+        for page in pagify('\n\n'.join(ret), delims=['\n\n']):
+            await ctx.send(page)
+
+    async def mh_game_filter(self, ctx, tag: Tag,
+                             f: Optional[Callable[[Sequence[Game]], Coroutine[None, None, Iterable[Game]]]],
+                             limit: int) -> Iterable[Game]:
+        if f is None:
+            async def f(_): return _
+        if not await self.has_access(ctx.author, tag):
+            raise ClientInlineTextException(f"You do not have permission to query the tag `{tag}`.")
+        games = sorted(await self.api.get_all_games(tag=tag), key=lambda g: isoparse(g['createdAt']), reverse=True)
+        if not games:
+            raise ClientInlineTextException(f"There are no games with tag `{tag}`."
+                                            f" Make sure the tag is valid and correctly cased.")
+        invalid_games = await self.config.invalid_games()
+        return await f([game for game in games[:limit][::-1] if game['platformGameId'] not in invalid_games])
 
     @mhtool.group(name='subscription', aliases=['subscriptions', 'subscribe'])
     async def mh_subscription(self, ctx):
@@ -551,7 +587,7 @@ class BayesGAMH(commands.Cog):
                     invalid_ids.append(rpgid)
                     continue
 
-                if not self.has_access(ctx.author, *game['tags']):
+                if not await self.has_access(ctx.author, *game['tags']):
                     no_perms.append(rpgid)
                     continue
 
@@ -630,7 +666,7 @@ class BayesGAMH(commands.Cog):
         return f"<t:{int(isoparse(datestr).timestamp())}:F>"
 
     @staticmethod
-    async def filter_new(site: EsportsClient, games: List[Game]) -> List[Game]:
+    async def filter_new(site: EsportsClient, games: Sequence[Game]) -> List[Game]:
         """Returns only new games from a list of games."""
         if not games:
             return []
