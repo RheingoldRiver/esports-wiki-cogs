@@ -54,7 +54,8 @@ class BayesGAMH(commands.Cog):
 
         self.session = aiohttp.ClientSession()
         self.config = Config.get_conf(self, identifier=847356477)
-        self.config.register_global(seen={}, allowed_channels={}, auto_channels={}, invalid_games={})
+        self.config.register_global(seen={}, allowed_channels={}, autochannel_seen={}, auto_channels={},
+                                    invalid_games={})
         self.config.register_user(allowed_tags={}, subscriptions={}, jsononly=True)
 
         self.api = BayesAPIWrapper(bot, self.session)
@@ -128,16 +129,19 @@ class BayesGAMH(commands.Cog):
                 seen[game['platformGameId']] = len(game['assets'])
 
     async def do_auto_channel(self) -> None:
-        seen = await self.config.seen()
-        changed_games = sorted((game for game in await self.api.get_all_games()
-                                if seen.get(game['platformGameId'], -1) != len(game['assets'])),
-                               key=lambda g: isoparse(g['createdAt']))
-        msg = [await self.format_game_long(game, None) for game in changed_games if 'GAMH_DETAILS' in game['assets']]
+        async with self.config.autochannel_seen() as seen:
+            changed_games = sorted((game for game in await self.api.get_all_games()
+                                    if seen.get(game['platformGameId'], -1) != len(game['assets'])),
+                                   key=lambda g: isoparse(g['createdAt']))
+            msg = [await self.format_game_long(game, None) for game in changed_games if 'GAMH_DETAILS' in game['assets']]
 
-        for cid in await self.config.auto_channels():
-            if None is not (channel := self.bot.get_channel(int(cid))):
-                for page in pagify('\n\n'.join(msg)):
-                    await channel.send(page)
+            for cid in await self.config.auto_channels():
+                if None is not (channel := self.bot.get_channel(int(cid))):
+                    for page in pagify('\n\n'.join(msg)):
+                        await channel.send(page)
+
+            for game in changed_games:
+                seen[game['platformGameId']] = len(game['assets'])
 
     @commands.group()
     @commands.check(is_editor)
