@@ -93,8 +93,7 @@ class BayesAPIWrapper:
                 return await self._ensure_login(False)
         elif self.expires <= datetime.now():
             data = await self._do_api_call('POST', 'login/refresh_token',
-                                           {'refreshToken': self.refresh_token},
-                                           ensure_keys=['accessToken', 'expiresIn'])
+                                           {'refreshToken': self.refresh_token})
             self.access_token = data['accessToken']
             self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
         else:
