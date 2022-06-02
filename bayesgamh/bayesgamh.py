@@ -198,7 +198,7 @@ class BayesGAMH(commands.Cog):
 
         if tag is not None:
             for u_id, data in (await self.config.all_users()).items():
-                if (user := self.bot.get_user(u_id)) and await self.has_access(user, tag):
+                if (user := self.bot.get_user(u_id)) and tag in data['allowed_tags']:
                     users.append({'user': user, 'date': data['allowed_tags'][tag].get('date', 0)})
 
             if not users:
