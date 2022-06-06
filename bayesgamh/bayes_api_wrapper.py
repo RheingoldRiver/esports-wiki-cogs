@@ -65,21 +65,7 @@ class BayesAPIWrapper:
     async def _ensure_login(self, force_relogin: bool = False) -> None:
         """Ensure that the access_token is recent and valid"""
         if force_relogin:
-            keys = await self.bot.get_shared_api_tokens("bayes")
-            if not ("username" in keys and "password" in keys):
-                raise NoAPIKeyException((await self.bot.get_valid_prefixes())[0]
-                                        + f"set api bayes username <USERNAME> password <PASSWORD>")
-            try:
-                data = await self._do_api_call('POST', 'login',
-                                               {'username': keys['username'], 'password': keys['password']})
-            except ClientResponseError as e:
-                if e.status == 500:
-                    raise BadAPIKeyException((await self.bot.get_valid_prefixes())[0]
-                                             + f"set api bayes username <USERNAME> password <PASSWORD>")
-                raise
-            self.access_token = data['accessToken']
-            self.refresh_token = data['refreshToken']
-            self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
+            await self._new_login()
         elif self.access_token is None:
             try:
                 async with aopen(_data_file('keys.json')) as f:
@@ -92,13 +78,35 @@ class BayesAPIWrapper:
             if self.expires <= datetime.now():
                 return await self._ensure_login(False)
         elif self.expires <= datetime.now():
-            data = await self._do_api_call('POST', 'login/refresh_token',
+            try:
+                data = await self._do_api_call('POST', 'login/refresh_token',
                                            {'refreshToken': self.refresh_token})
+            except ClientResponseError:
+                # in case the refresh token endpoint is down or something
+                await self._new_login()
+                return
             self.access_token = data['accessToken']
             self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
         else:
             return
         await self._save_login()
+
+    async def _new_login(self):
+        keys = await self.bot.get_shared_api_tokens("bayes")
+        if not ("username" in keys and "password" in keys):
+            raise NoAPIKeyException((await self.bot.get_valid_prefixes())[0]
+                                    + f"set api bayes username <USERNAME> password <PASSWORD>")
+        try:
+            data = await self._do_api_call('POST', 'login',
+                                           {'username': keys['username'], 'password': keys['password']})
+        except ClientResponseError as e:
+            if e.status == 500:
+                raise BadAPIKeyException((await self.bot.get_valid_prefixes())[0]
+                                         + f"set api bayes username <USERNAME> password <PASSWORD>")
+            raise
+        self.access_token = data['accessToken']
+        self.refresh_token = data['refreshToken']
+        self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
 
     @backoff.on_exception(backoff.expo, RateLimitException, logger=None)
     async def _do_api_call(self, method: Literal['GET', 'POST'], service: str,
