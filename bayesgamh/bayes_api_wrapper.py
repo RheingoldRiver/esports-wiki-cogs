@@ -80,7 +80,7 @@ class BayesAPIWrapper:
         elif self.expires <= datetime.now():
             try:
                 data = await self._do_api_call('POST', 'login/refresh_token',
-                                           {'refreshToken': self.refresh_token})
+                                               {'refreshToken': self.refresh_token})
                 self.access_token = data['accessToken']
                 self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
             except ClientResponseError:
@@ -137,7 +137,8 @@ class BayesAPIWrapper:
         await self._ensure_login()
         return {'Authorization': f'Bearer {self.access_token}'}
 
-    def _clean_game(self, game: Game) -> Game:
+    @staticmethod
+    def _clean_game(game: Game) -> Game:
         """Add the NULL tag to a game with no tags."""
         if not game['tags']:
             game['tags'].append('NULL')
