@@ -81,12 +81,11 @@ class BayesAPIWrapper:
             try:
                 data = await self._do_api_call('POST', 'login/refresh_token',
                                            {'refreshToken': self.refresh_token})
+                self.access_token = data['accessToken']
+                self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
             except ClientResponseError:
                 # in case the refresh token endpoint is down or something
                 await self._new_login()
-                return
-            self.access_token = data['accessToken']
-            self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
         else:
             return
         await self._save_login()
