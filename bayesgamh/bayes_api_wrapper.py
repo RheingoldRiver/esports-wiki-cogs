@@ -16,8 +16,9 @@ from bayesgamh.errors import BadRequestException
 
 logger = logging.getLogger('red.esports-wiki-cogs.bayesgamh')
 
-GameID = AssetType = str
+GameID = str
 Tag = Union[str, Literal['NULL', 'ALL']]
+AssetType = Literal['GAMH_DETAILS', 'GAMH_SUMMARY', 'ROFL_REPLAY']
 
 
 class Game(TypedDict):
@@ -27,6 +28,9 @@ class Game(TypedDict):
     createdAt: str  # ISO-8601 Formatted
     assets: List[AssetType]
     tags: List[Tag]
+    blockName: str
+    subBlockName: str
+    teamTriCodes: List[str]
 
 
 class GetGamesResponse(TypedDict):
@@ -54,43 +58,31 @@ class BayesAPIWrapper:
         self.refresh_token = None
         self.expires = datetime.min
 
-    async def _save_login(self):
-        async with aopen(_data_file('keys.json'), 'w+') as f:
-            await f.write(json.dumps({
-                'accessToken': self.access_token,
-                'refreshToken': self.refresh_token,
-                'expiresIn': self.expires.timestamp()
-            }))
-
-    async def _ensure_login(self, force_relogin: bool = False) -> None:
+    async def _ensure_login(self) -> None:
         """Ensure that the access_token is recent and valid"""
-        if force_relogin:
-            await self._new_login()
-        elif self.access_token is None:
+        if self.access_token is None:
             try:
                 async with aopen(_data_file('keys.json')) as f:
                     data = json.loads(await f.read())
             except FileNotFoundError:
-                return await self._ensure_login(True)
+                return await self._new_login()
             self.access_token = data['accessToken']
             self.refresh_token = data['refreshToken']
-            self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
-            if self.expires <= datetime.now():
-                return await self._ensure_login(False)
-        elif self.expires <= datetime.now():
+            self.expires = datetime.fromtimestamp(data['expiresIn'])
+
+        if self.expires <= datetime.now():
             try:
                 data = await self._do_api_call('POST', 'login/refresh_token',
                                                {'refreshToken': self.refresh_token})
                 self.access_token = data['accessToken']
+                self.refresh_token = data['refreshToken']
                 self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
+                await self._save_login()
             except ClientResponseError:
-                # in case the refresh token endpoint is down or something
+                # Invalid login (Refresh token is down)
                 await self._new_login()
-        else:
-            return
-        await self._save_login()
 
-    async def _new_login(self):
+    async def _new_login(self) -> None:
         keys = await self.bot.get_shared_api_tokens("bayes")
         if not ("username" in keys and "password" in keys):
             raise NoAPIKeyException((await self.bot.get_valid_prefixes())[0]
@@ -103,9 +95,19 @@ class BayesAPIWrapper:
                 raise BadAPIKeyException((await self.bot.get_valid_prefixes())[0]
                                          + f"set api bayes username <USERNAME> password <PASSWORD>")
             raise
+
         self.access_token = data['accessToken']
         self.refresh_token = data['refreshToken']
         self.expires = datetime.now() + timedelta(seconds=data['expiresIn'])
+        await self._save_login()
+
+    async def _save_login(self) -> None:
+        async with aopen(_data_file('keys.json'), 'w+') as f:
+            await f.write(json.dumps({
+                'accessToken': self.access_token,
+                'refreshToken': self.refresh_token,
+                'expiresIn': self.expires.timestamp()
+            }))
 
     @backoff.on_exception(backoff.expo, RateLimitException, logger=None)
     async def _do_api_call(self, method: Literal['GET', 'POST'], service: str,
@@ -118,7 +120,7 @@ class BayesAPIWrapper:
         if method == "GET":
             async with self.session.get(endpoint + service, headers=await self._get_headers(), params=data) as resp:
                 if resp.status == 401 and allow_retry:
-                    await self._ensure_login(force_relogin=True)
+                    await self._new_login()
                     return await self._do_api_call(method, service, data, allow_retry=False)
                 elif resp.status == 429:
                     raise RateLimitException()
