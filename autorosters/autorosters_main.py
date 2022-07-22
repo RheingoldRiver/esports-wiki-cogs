@@ -174,9 +174,10 @@ class AutoRostersRunner(TaskRunner):
         )
 
         for player_data in response:
-            players_data[player_data["Player"]] = [{"flag": player_data["NP"] or player_data["Country"]},
-                                                   {"res": player_data["Residency"]}, {"player": player_data["Player"]},
-                                                   {"name": player_data["name"].replace("&amp;nbsp;", " ")}]
+            player_name = player_data["name"].replace("&amp;nbsp;", " ") if player_data["name"] is not None else ""
+            players_data[player_data["Player"]] = [{"flag": player_data["NP"] or player_data["Country"] or ""},
+                                                   {"res": player_data["Residency"]} or "", {"player": player_data["Player"]},
+                                                   {"name": player_name}]
         return players_data
 
     def add_team_vs(self, current_teams):
@@ -284,7 +285,7 @@ class AutoRostersRunner(TaskRunner):
                 if players_data.get(player):
                     player_data = self.concat_args(players_data[player])
                 else:
-                    player_data = self.concat_args([{"player": player}])
+                    player_data = self.concat_args([{"flag": ""}, {"res": ""}, {"player": player}, {"name": ""}])
                 player_roles_data = self.concat_args(game_rd_player["roles_data"])
                 player_games_by_role = self.concat_args(game_rd_player["games_by_role"])
                 players_text += self.PLAYER_TEXT.format(player_data, player_roles_data, player_games_by_role)
