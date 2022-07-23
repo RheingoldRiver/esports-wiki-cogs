@@ -7,26 +7,34 @@ from mwrogue.wiki_time_parser import time_from_str
 
 # links
 SCHEDULE = "https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&leagueId={}"
+
 NEXT = "https://esports-api.lolesports.com/persisted/gw/getSchedule?hl=en-US&leagueId={}&pageToken={}"
+
 LEAGUES = "https://esports-api.lolesports.com/persisted/gw/getLeagues?hl=en-US"
 
 # templates
 START = """== {0} ==
 {{{{SetPatch|patch= |disabled= |hotfix= |footnote=}}}}
 {{{{MatchSchedule/Start|tab={0} |bestof={1} |shownname= }}}}\n"""
+
 MATCH = """{{{{MatchSchedule|<!-- Do not change the order of team1 and team2!! -->|team1={t1} |team2={t2} |team1score= |team2score= |winner=
 |date={date} |time={time} |timezone={timezone} |dst={dst} |pbp= |color= |vodinterview= |with= |stream={stream} |reddit=\n{games}\n}}}}\n"""
+
 BO1_GAMES = """|game1={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}"""
+
 BO2_GAMES = """|game1={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}
 |game2={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}"""
+
 BO3_GAMES = """|game1={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}
 |game2={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}
 |game3={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}"""
+
 BO5_GAMES = """|game1={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}
 |game2={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}
 |game3={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}
 |game4={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}
 |game5={{MatchSchedule/Game\n|blue= |red= |winner= |ssel= |ff=\n|mh=\n|riot_platform_game_id=\n|recap=\n|vodpb=\n|vodstart=\n|vodpost=\n|vodhl=\n|vodinterview=\n|with=\n|mvp=\n}}"""
+
 END = "{{MatchSchedule/End}}\n"
 
 
@@ -34,6 +42,9 @@ ERROR_MESSAGE = "An error has occured. {} might not exist. If your input contain
 
 
 class MatchScheduleParser(commands.Cog):
+
+    def __init__(self, bot):
+        self.bot = bot
 
     @commands.group()
     async def lolesportsparser(self, ctx):
