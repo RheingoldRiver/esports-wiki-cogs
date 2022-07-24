@@ -204,6 +204,14 @@ class AutoRostersRunner(TaskRunner):
                             player["games_by_role"][role] += f"{'n' * math.ceil(int(match['best_of']) / 2)},"
                 continue
             for game in match["games"].values():
+                if game["msg_data"]["MSGFF"]:
+                    for team in current_teams:
+                        if "players" not in self.rosters_data[team].keys():
+                            continue
+                        for player in self.rosters_data[team]["players"].values():
+                            for role in player["games_by_role"].keys():
+                                player["games_by_role"][role] += "n"
+                    continue                 
                 for team in current_teams:
                     rd_team = self.rosters_data[team]
                     for player in rd_team["players"].keys():
@@ -237,7 +245,7 @@ class AutoRostersRunner(TaskRunner):
                     player["games_by_role"][role] = role_data[:-1]
 
     def get_order(self):
-        sorted_teams = sorted(list(self.rosters_data.keys()))
+        sorted_teams = sorted(self.rosters_data.keys(), key=lambda x: x.lower())
         sorted_data = {"teams": sorted_teams, "players": {}}
         for team, team_data in self.rosters_data.items():
             team_players = {}
@@ -303,4 +311,4 @@ class AutoRostersRunner(TaskRunner):
 if __name__ == '__main__':
     credentials = AuthCredentials(user_file='bot')
     lol_site = EsportsClient('lol', credentials=credentials)
-    AutoRostersRunner(lol_site, "LMF 2022 Opening").run()
+    AutoRostersRunner(lol_site, "Hitpoint 2nd Division Challengers/2022 Season/Summer Season").run()
