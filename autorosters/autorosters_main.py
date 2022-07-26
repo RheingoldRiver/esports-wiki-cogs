@@ -54,7 +54,8 @@ class AutoRostersRunner(TaskRunner):
             fields=["MS.MatchId", "MSG.GameId", "MS.FF=MSFF", "MSG.FF=MSGFF", "MS.BestOf", "MS.Team1Final",
                     "MS.Team2Final", "MS.Team1", "MS.Team2"],
             join_on="MS.MatchId=MSG.MatchId",
-            where=f"MS.OverviewPage = '{self.overview_page}' AND MS.Team1 != \"TBD\" AND MS.Team2 != \"TBD\"",
+            where=f"MS.OverviewPage = '{self.overview_page}' AND MS.Team1 != \"TBD\" AND MS.Team2 != \"TBD\" AND "
+                  f"MS.Winner IS NOT NULL",
             order_by="MS.N_Page, MS.N_MatchInPage, MSG.N_GameInMatch"
         )
         return matchschedule_data
@@ -204,7 +205,7 @@ class AutoRostersRunner(TaskRunner):
                             player["games_by_role"][role] += f"{'n' * math.ceil(int(match['best_of']) / 2)},"
                 continue
             for game in match["games"].values():
-                if game["msg_data"]["MSGFF"]:
+                if game["msg_data"]["MSGFF"] is not None:
                     for team in current_teams:
                         if "players" not in self.rosters_data[team].keys():
                             continue
@@ -311,4 +312,4 @@ class AutoRostersRunner(TaskRunner):
 if __name__ == '__main__':
     credentials = AuthCredentials(user_file='bot')
     lol_site = EsportsClient('lol', credentials=credentials)
-    AutoRostersRunner(lol_site, "Hitpoint 2nd Division Challengers/2022 Season/Summer Season").run()
+    AutoRostersRunner(lol_site, "Claro Stars League/2022 Season/Closing Playoffs").run()
