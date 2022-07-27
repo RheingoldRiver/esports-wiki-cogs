@@ -52,10 +52,9 @@ class AutoRostersRunner(TaskRunner):
         matchschedule_data = self.site.cargo_client.query(
             tables="MatchSchedule=MS, MatchScheduleGame=MSG",
             fields=["MS.MatchId", "MSG.GameId", "MS.FF=MSFF", "MSG.FF=MSGFF", "MS.BestOf", "MS.Team1Final",
-                    "MS.Team2Final", "MS.Team1", "MS.Team2"],
+                    "MS.Team2Final", "MS.Team1", "MS.Team2", "MS.Winner=MatchWinner"],
             join_on="MS.MatchId=MSG.MatchId",
-            where=f"MS.OverviewPage = '{self.overview_page}' AND MS.Team1 != \"TBD\" AND MS.Team2 != \"TBD\" AND "
-                  f"MS.Winner IS NOT NULL",
+            where=f"MS.OverviewPage = '{self.overview_page}' AND MS.Team1 != \"TBD\" AND MS.Team2 != \"TBD\"",
             order_by="MS.N_Page, MS.N_MatchInPage, MSG.N_GameInMatch"
         )
         return matchschedule_data
@@ -65,8 +64,11 @@ class AutoRostersRunner(TaskRunner):
         where = "SG.GameId IN ({})"
         gameids_to_query = []
         for game in matchschedule_data:
-            if not game["MSFF"] or not game["MSGFF"]:
-                gameids_to_query.append(f"\"{game['GameId']}\"")
+            if game["MSFF"] or game["MSGFF"]:
+                continue
+            if not game["MatchWinner"]:
+                continue
+            gameids_to_query.append(f"\"{game['GameId']}\"")
         where = where.format(" ,".join(gameids_to_query))
         return where
 
@@ -136,12 +138,14 @@ class AutoRostersRunner(TaskRunner):
 
     def initialize_roster_data(self):
         for match in self.match_data.values():
+            for team in (match["team1"], match["team2"]):
+                team = self.alt_teamnames[team]
+                if team not in self.rosters_data:
+                    self.rosters_data[team] = {"players": {}, "teamsvs": []}
             for game in match["games"].values():
                 if game.get("sg_data"):
                     for player in game["sg_data"]["players"].values():
                         team = self.alt_teamnames[player["team"]]
-                        if team not in self.rosters_data.keys():
-                            self.rosters_data[team] = {"players": {}, "teamsvs": []}
                         team_players = self.rosters_data[team]["players"]
                         if player["link"] not in team_players.keys():
                             team_players[player["link"]] = {"roles": [], "roles_data": {},
@@ -177,8 +181,8 @@ class AutoRostersRunner(TaskRunner):
         for player_data in response:
             player_name = player_data["name"].replace("&amp;nbsp;", " ") if player_data["name"] is not None else ""
             players_data[player_data["Player"]] = [{"flag": player_data["NP"] or player_data["Country"] or ""},
-                                                   {"res": player_data["Residency"]} or "", {"player": player_data["Player"]},
-                                                   {"name": player_name}]
+                                                   {"res": player_data["Residency"]} or "",
+                                                   {"player": player_data["Player"]}, {"name": player_name}]
         return players_data
 
     def add_team_vs(self, current_teams):
@@ -212,7 +216,7 @@ class AutoRostersRunner(TaskRunner):
                         for player in self.rosters_data[team]["players"].values():
                             for role in player["games_by_role"].keys():
                                 player["games_by_role"][role] += "n"
-                    continue                 
+                    continue
                 for team in current_teams:
                     rd_team = self.rosters_data[team]
                     for player in rd_team["players"].keys():
@@ -312,4 +316,4 @@ class AutoRostersRunner(TaskRunner):
 if __name__ == '__main__':
     credentials = AuthCredentials(user_file='bot')
     lol_site = EsportsClient('lol', credentials=credentials)
-    AutoRostersRunner(lol_site, "Claro Stars League/2022 Season/Closing Playoffs").run()
+    AutoRostersRunner(lol_site, "Hitpoint Masters/2022 Season/Summer Season").run()
