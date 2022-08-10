@@ -87,6 +87,7 @@ class BayesGAMH(commands.Cog):
         try:
             async for _ in repeating_timer(60):
                 try:
+                    print("Starting subscriptions loop")
                     await self.do_auto_channel()
                     await self.do_subscriptions()
                 except asyncio.CancelledError:
@@ -100,6 +101,7 @@ class BayesGAMH(commands.Cog):
         async with self.subscription_lock, self.config.seen() as seen:
             tags_to_uid = defaultdict(set)
             for u_id, data in (await self.config.all_users()).items():
+                print(data["subscriptions"])
                 for sub in data['subscriptions']:
                     tags_to_uid[sub].add(u_id)
 
@@ -108,6 +110,8 @@ class BayesGAMH(commands.Cog):
                 if seen.get(game['platformGameId'], -1) != len(game['assets']):  # Different number of assets
                     changed_games.append(game)
 
+            print("changed_games")
+                    
             for u_id, data in (await self.config.all_users()).items():
                 if (user := self.bot.get_user(u_id)) is None:
                     logger.warning(f"Failed to find user with ID {u_id} for subscription.")
