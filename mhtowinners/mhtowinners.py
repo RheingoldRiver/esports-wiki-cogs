@@ -4,7 +4,6 @@ from requests import ReadTimeout
 from redbot.core import commands
 from tsutils.user_interaction import StatusManager
 
-from mhtowinners.mhtowinners_main import MhToWinnersRunner
 from mhtowinners.sbtowinners_main import SbToWinnersRunner
 from mhtowinners.vodstosb_main import VodsToSbRunner
 
@@ -14,10 +13,6 @@ class MhToWinners(commands.Cog):
     
     def __init__(self, bot):
         self.bot = bot
-    
-    @commands.command(pass_context=True)
-    async def mhtowinners(self, ctx):
-        await self._do_the_thing(ctx, MhToWinnersRunner)
     
     @commands.command(pass_context=True)
     async def sbtowinners(self, ctx):
