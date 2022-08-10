@@ -91,10 +91,13 @@ class BayesGAMH(commands.Cog):
                     await self.do_auto_channel()
                     await self.do_subscriptions()
                 except asyncio.CancelledError:
+                    print("asyncio.CancelledError")
                     raise
                 except Exception:
+                    print("Error in Loop")
                     logger.exception("Error in loop:")
         except asyncio.CancelledError:
+            print("asyncio.CancelledError")
             return
 
     async def do_subscriptions(self) -> None:
