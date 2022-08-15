@@ -17,11 +17,6 @@ class MhToWinners(commands.Cog):
     @commands.command(pass_context=True)
     async def sbtowinners(self, ctx):
         await self._do_the_thing(ctx, SbToWinnersRunner)
-    
-    @commands.command(pass_context=True)
-    async def vodstosb(self, ctx):
-        vod_params = ['VodPB', 'VodGameStart', 'Vod', 'VodPostgame']
-        await self._do_the_thing(ctx, VodsToSbRunner, vod_params)
 
     async def _do_the_thing(self, ctx, the_thing, *args):
         await ctx.send('Okay, starting now!')
