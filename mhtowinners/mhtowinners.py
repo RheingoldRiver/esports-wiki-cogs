@@ -10,13 +10,14 @@ from mhtowinners.vodstosb_main import VodsToSbRunner
 
 class MhToWinners(commands.Cog):
     """Commands to update MatchSchedule & Scoreboards based on each other's data"""
-    
+
     def __init__(self, bot):
         self.bot = bot
-    
+
     @commands.command(pass_context=True)
-    async def sbtowinners(self, ctx):
-        await self._do_the_thing(ctx, SbToWinnersRunner)
+    async def sbtowinners(self, ctx, *, title_list):
+        title_list = [title.split() for title in title_list.split(",")]
+        await self._do_the_thing(ctx, SbToWinnersRunner, title_list)
 
     async def _do_the_thing(self, ctx, the_thing, *args):
         await ctx.send('Okay, starting now!')
